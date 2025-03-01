@@ -124,6 +124,9 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
         for i, trial in enumerate(trials):
             print(f"  🔹 Trial {i+1}: {trial}")  # Debugging print to check each trial
 
+            if trial["audio"]:
+                trial["audio"].stop()
+
             # Show fixation cross
             fixation.draw()
             win.flip()
@@ -159,10 +162,10 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
             key, rt = response[0] if response else ("No Response", None)
 
             correct = None
-            if trial["type"] in ["V", "A"]:
+            if trial["type"] in ["V", "A", "AVC"]:
                 expected_response = "b" if (trial["visual"] == "blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "r"
                 correct = key == expected_response
-            elif trial["type"] in ["AVC", "AVI"]:
+            elif trial["type"] in ["AVI"]:
                 correct = "NA"
 
             # ✅ Adjust ITI based on trial4 condition
@@ -251,24 +254,25 @@ participant_number, csv_filename = get_participant_info()
 win = visual.Window(size=(800, 600), color="black", units="pix")
 
 # 🔶 Practice
-show_instructions(win, "In this experiment you will either SEE or HEAR a color.\n\n"
-                  "Your job is to select the correct key depending on which color you percieve.\n\n"
-                  "Respond as quickly and accurately as possible.", 7)
-show_instructions(win,"click the 'R' key\n when you see a RED circle\n\n"
-                  "click the 'B' key\n when you see a BLUE circle.\n\n", 7)
-run_practice(win, iti_range=(1.25, 1.5))
+show_instructions(win, "In this experiment, you will either SEE a color, HEAR a color, or both.\n\n"
+                  "Your task is to press the button that matches the perceived color.\n\n"
+                  "Respond as quickly and accurately as possible.", 1)
+show_instructions(win,"click the RED button\n when you percieve RED\n\n"
+                  "click the BLUE\n when you percieve BLUE\n\n", 1)
+### Include Practice Trials ###
 show_instructions(win, "Great job! now you will be moving on to the real task.\n\n"
-                  "Respond as quickly and accurately as possible", 2)
+                  "Respond as quickly and accurately as possible", 1)
 
 # 🔶 RUN TRIALS
-run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A", "AVC", "AVI"])
+run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.25, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
 show_instructions(win, "one minute break...\n\n", 2)
-run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A", "AVC", "AVI"])
-show_instructions(win, "one minute break..", 2)
-run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A", "AVC", "AVI"])
-show_instructions(win, "one minute break..", 2)
-run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A", "AVC", "AVI"], trial4=True)
-show_instructions(win, "Great job! You have completed the task", 2)
+run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.25, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
+show_instructions(win, "one minute break...", 2)
+run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.25, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
+show_instructions(win, "one minute break...", 2)
+run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.25, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"], trial4=True)
+show_instructions(win, "Great job! You have completed the task\n\n", 
+                  "Thank you for participating!", 2)
 
 # 🔶 Close the Experiment
 win.close()
