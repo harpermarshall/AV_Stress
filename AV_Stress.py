@@ -80,7 +80,7 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
         iti_end = 0.375  # Desired lower bound for trial4
     total_trial_types = len(trial_types)
     trials_per_type = total_trials // total_trial_types  # // rounds down to nearest int
-    response_keys = ["r", "b"]  # Response keys
+    response_keys = ["a", "f"]  # Response keys
     fixation = visual.TextStim(win, text="+", color="white", height=40)
 
     # Preload audio files
@@ -109,7 +109,7 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
                 elif trial_type == "A":
                     color = None
                     audio = preloaded_sounds[next(color_iterator)]
-                elif trial_type == "AVC":
+                elif trial_type == "AVC":    
                     color = next(color_iterator)
                     audio = preloaded_sounds[color]
                 elif trial_type == "AVI":
@@ -181,7 +181,7 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
             # Determine correctness
             correct = None
             if trial["type"] in ["V", "A", "AVC"]:
-                expected_response = "b" if (trial["visual"] == "blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "r"
+                expected_response = "a" if (trial["visual"] == "blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "f"
                 correct = key == expected_response
             elif trial["type"] in ["AVI"]:
                 correct = "NA"
