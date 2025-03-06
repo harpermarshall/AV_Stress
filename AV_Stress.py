@@ -85,8 +85,8 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
 
     # Preload audio files
     audio_files = {
-        "red": "/Users/harpermarshall/Desktop/Project 1/sounds/red.mp3",
-        "blue": "/Users/harpermarshall/Desktop/Project 1/sounds/blue.mp3"
+    "red": "C:/Users/WallaceLab/Documents/GitHub/AV_Stress/Sounds/red_converted.wav",
+    "blue": "C:/Users/WallaceLab/Documents/GitHub/AV_Stress/Sounds/blue_converted.wav"
     }
     preloaded_sounds = {color: sound.Sound(path) if os.path.exists(path) else None for color, path in audio_files.items()}
 
@@ -150,7 +150,7 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
                 print(f"🎵 Audio started at: {stimulus_start_time:.3f} sec")
             
             # Introduce 300 ms delay before showing visual stimulus
-            core.wait(0.3)
+            core.wait(0.26)
 
             # Now display the visual stimulus
             if trial["visual"]:
