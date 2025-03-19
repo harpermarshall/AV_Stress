@@ -53,11 +53,11 @@ def get_participant_info():
 # 🔷 Function to Show Written Instructions
 def show_instructions(win, text, duration):
     instructions = visual.TextStim(
-        win, text=text, color="white", height=30, 
-        wrapWidth=700, font="Arial Unicode MS"
+        win, text=text, color="white", height=45, 
+        wrapWidth=1400, font="Arial Unicode MS"
     )
-    continue_text = visual.TextStim(win, text="*Press space bar to begin*",
-                                    color="white", height=20, italic=True, pos=(0, -250))
+    continue_text = visual.TextStim(win, text="*Press space bar to proceed*",
+                                    color="white", height=30, italic=True, pos=(0, -350))
     
     instructions.draw()
     win.flip()
@@ -122,6 +122,11 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
         random.shuffle(trials)
 
         for i, trial in enumerate(trials):
+            if 'escape' in event.getKeys():
+                print("Escape key pressed! Exiting...")
+                win.close()
+                core.quit()
+
             print(f"  🔹 Trial {i+1}: {trial}")  # Debugging print to check each trial
 
             if trial["audio"]:
@@ -137,17 +142,18 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
 
             # Prepare visual stimulus
             if trial["visual"]:
-                circle = visual.Circle(win, radius=50, fillColor=trial["visual"], lineColor=None)
+                circle = visual.Circle(win, radius=75, fillColor=trial["visual"], lineColor=None)
+            
             # Prepare auditory stimulus
             beep = trial["audio"]
 
             # Get time just before stimulus presentation
-            stimulus_start_time = core.getTime()
+            audio_onset_time = core.getTime()
 
             # Play auditory stimulus immediately
             if beep:
                 beep.play()
-                print(f"🎵 Audio started at: {stimulus_start_time:.3f} sec")
+                print(f"🎵 Audio started at: {audio_onset_time:.3f} sec")
             
             # Introduce 300 ms delay before showing visual stimulus
             core.wait(0.3)
@@ -158,8 +164,6 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
                 win.flip()
                 visual_onset_time = core.getTime()  # Get actual visual onset time
                 print(f"🎨 Visual stimulus appeared at: {visual_onset_time:.3f} sec")
-            else:
-                visual_onset_time = stimulus_start_time  # If no visual stimulus, keep same onset
 
             # Start response collection from the correct time
             response = event.waitKeys(maxWait=2.0, keyList=response_keys, timeStamped=clock)
@@ -172,11 +176,9 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
                     feedback_text = visual.TextStim(win, text="Too Slow", color="red", height=40)
                     feedback_text.draw()
                     win.flip()
-                    core.wait(1)  # Display feedback for 1 second
+                    core.wait(0.6)  # Display feedback for 0.6 second
             else:
                 key, rt = response[0]
-                # **Correct RT calculation: subtract from visual onset**
-                rt = rt + stimulus_start_time - visual_onset_time 
 
             # Determine correctness
             correct = None
@@ -212,7 +214,8 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
             core.wait(iti)  # Inter-Trial Interval
 
 # 🔷 Function to Run Practice
-def run_practice(win, iti_range):
+def run_practice(win, iti_range, total_trials, trial_types):
+    response_keys = ["r", "b"]  # Response keys
     fixation = visual.TextStim(win, text="+", color="white", height=40)
 
     # Preload audio files
@@ -222,116 +225,242 @@ def run_practice(win, iti_range):
     }
     preloaded_sounds = {color: sound.Sound(path) if os.path.exists(path) else None for color, path in audio_files.items()}
 
-    # Hard-coded practice trials
-    practice_trials = [
-        {"type": "A", "visual": None, "audio": preloaded_sounds["red"]},  # Auditory Red
-        {"type": "A", "visual": None, "audio": preloaded_sounds["red"]},
-        {"type": "A", "visual": None, "audio": preloaded_sounds["red"]},
-        {"type": "A", "visual": None, "audio": preloaded_sounds["blue"]},  # Auditory Blue
-        {"type": "A", "visual": None, "audio": preloaded_sounds["blue"]},
-        {"type": "A", "visual": None, "audio": preloaded_sounds["blue"]},
-        {"type": "V", "visual": "red", "audio": None},  # Visual Red
-        {"type": "V", "visual": "red", "audio": None},
-        {"type": "V", "visual": "red", "audio": None},
-        {"type": "V", "visual": "blue", "audio": None},  # Visual Blue
-        {"type": "V", "visual": "blue", "audio": None},
-        {"type": "V", "visual": "blue", "audio": None},
-    ]
+    # Generate trials
+    trials = []
+    total_trial_types = len(trial_types)
+    trials_per_type = total_trials // total_trial_types  # // rounds down to nearest int
 
-    # Shuffle the hard-coded practice trials
-    random.shuffle(practice_trials)
+    for trial_type in trial_types:
+        colors = ["red"] * (trials_per_type // 2) + ["blue"] * (trials_per_type // 2)
+        color_iterator = iter(colors)  # Assign colors in order
 
-    # Run trials in randomized order
-    for i, trial in enumerate(practice_trials):
+        for _ in range(trials_per_type):
+            if trial_type == "V":
+                color = next(color_iterator)
+                audio = None
+            elif trial_type == "A":
+                color = None
+                audio = preloaded_sounds[next(color_iterator)]
+            elif trial_type == "AVC":
+                color = next(color_iterator)
+                audio = preloaded_sounds[color]
+            elif trial_type == "AVI":
+                color = next(color_iterator)
+                incongruent_color = "red" if color == "blue" else "blue"
+                audio = preloaded_sounds[incongruent_color]
+            trials.append({"type": trial_type, "visual": color, "audio": audio})
+
+    # **Shuffle trials ONCE before running**
+    random.shuffle(trials)
+
+    # Run trials
+    for i, trial in enumerate(trials):
+        if 'escape' in event.getKeys():
+                print("Escape key pressed! Exiting...")
+                win.close()
+                core.quit()
+        
+        print(f"🔹 Practice Trial {i+1}: {trial}")  # Debugging print
+
+        if trial["audio"]:
+            trial["audio"].stop()  # Stop previous sound
+
         # Show fixation cross
         fixation.draw()
         win.flip()
         core.wait(0.5)  # Fixation for 500ms
+
         event.clearEvents(eventType='keyboard')
         clock = core.Clock()
 
-        # Display visual stimulus if applicable
+        # Prepare visual stimulus
         if trial["visual"]:
-            circle = visual.Circle(win, radius=50, fillColor=trial["visual"], lineColor=None)
-            circle.draw()
+            circle = visual.Circle(win, radius=75, fillColor=trial["visual"], lineColor=None)
 
-        # Play auditory stimulus if applicable
+        # Prepare auditory stimulus
         beep = trial["audio"]
-        stimulus_start_time = core.getTime()  # Get timestamp before showing stimuli
+
+        # Start timing
+        audio_onset_time = core.getTime()
+
+        # Play auditory stimulus immediately
         if beep:
-            beep.play()  # Play audio just before flipping screen
+            beep.play()
+            print(f"🎵 Audio started at: {audio_onset_time:.3f} sec")
 
-        win.flip()  # Show visual stimulus
+        # Introduce 300 ms delay before showing visual stimulus
+        core.wait(0.3)
 
-        # ITI (Inter-Trial Interval)
+        # Now display the visual stimulus
+        if trial["visual"]:
+            circle.draw()
+            win.flip()
+            visual_onset_time = core.getTime()  # Get actual visual onset time
+            print(f"🎨 Visual stimulus appeared at: {visual_onset_time:.3f} sec")
+
+        # Collect response
+        response = event.waitKeys(maxWait=2.0, keyList=response_keys)
+        win.flip()
+
+        # Default values
+        key, correct = "No Response", None
+        if response:
+            key = response[0]
+            
+        # Determine correctness
+        if trial["type"] in ["V", "A", "AVC"]:
+            expected_response = "b" if (trial["visual"] == "blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "r"
+            correct = key == expected_response
+
+            if key == "No Response":
+                correct = None
+            else:
+                correct = key == expected_response
+
+            # Provide feedback
+            if correct is None:
+                feedback_text = visual.TextStim(win, text="Too Slow!", color="red", height=40)
+            elif correct:
+                feedback_text = visual.TextStim(win, text="✓ Correct", color="green", height=40)
+            else:
+                feedback_text = visual.TextStim(win, text="✗ Incorrect", color="red", height=40)
+
+        feedback_text.draw()
+        win.flip()
+        core.wait(0.6)  # Show feedback for 0.6 second
+
+        # **ITI should be here, after feedback**
         iti = random.uniform(iti_range[0], iti_range[1])
-        core.wait(iti)
+        core.wait(iti)  # Inter-Trial Interval
+
+        print(f"✅ Practice Trial {i+1} completed. ITI: {round(iti, 3)}s")
 
 # 🔷 Function to Run Post-Experiment Questionnaire
 def run_post_experiment_questionnaire(win, participant_number, csv_filename):
-    """
-    Presents a post-experiment Likert-scale questionnaire and records responses in the same CSV file.
-    """
     questions = [
-        "I felt pressured to respond quickly during the task.",
+        "Overall, I felt pressured to respond quickly during the task.",
+        "In the LAST BLOCK, I felt MORE stressed than in previous blocks.",
         "I found the task mentally demanding.",
-        "As the experiment progressed, my reaction time improved.",  # Reverse-coded for stress impact
-        "In the fourth block, I felt significantly more stressed than in previous blocks.",
-        "When both sound and visual stimuli were presented, I relied more on the visual information.",
-        "When both sound and visual stimuli were presented, I relied more on the auditory information.",
-        "I found it difficult to ignore the sound when focusing on the visual task.",
-        "I found it difficult to ignore the visual stimulus when focusing on the sound.",
+        "As the experiment progressed, I believe my performance IMPROVED.",  
+        "When both sound and visual stimuli were presented,\nI relied more on the VISUAL information.",
+        "When both sound and visual stimuli were presented,\nI relied more on the AUDITORY information.",
+        "I was presented with MORE RED stimuli than blue stimuli throughout the experiment.",
+        "I was presented with MORE BLUE stimuli than red stimuli throughout the experiment.",
         "The incongruent (mismatched) trials were harder than the congruent trials.",
         "I felt confident in my responses throughout the experiment."
     ]
 
-    scale_labels = "1 = Strongly Disagree   2 = Disagree   3 = Neutral   4 = Agree   5 = Strongly Agree"
+    responses = []  # Store all responses
 
-    responses = []  # Store participant responses
+    # Scale setup
+    scale_positions = [-600, -300, 0, 300, 600]  # Adjusted for screen fit
+    labels = ["Strongly\nDisagree", "Disagree", "Neutral", "Agree", "Strongly\nAgree"]
 
     for question in questions:
-        # Create and display question text
-        question_text = visual.TextStim(win, text=question, color="white", height=25, wrapWidth=750, pos=(0, 50))
-        scale_text = visual.TextStim(win, text=scale_labels, color="white", height=20, wrapWidth=750, pos=(0, -50))
+        # Instructions
+        instruction_text = visual.TextStim(win, text="Use the keyboard (1-5) to answer.", color="white", height=30, pos=(0, 350))
+
+        # Question text
+        question_text = visual.TextStim(win, text=question, color="white", height=45, wrapWidth=1400, pos=(0, 250))
+
+        # Scale line
+        scale_line = visual.Line(win, start=(scale_positions[0], 0), end=(scale_positions[-1], 0), lineColor="white", lineWidth=5)
+
+        # Selection dots (default white) with labels 1-5
+        dots = [visual.Circle(win, radius=25, fillColor="white", lineColor="white", pos=(scale_positions[i], 0)) for i in range(5)]
+        dot_labels = [visual.TextStim(win, text=str(i+1), color="white", height=35, pos=(scale_positions[i], 50)) for i in range(5)]
         
-        # Display question
+        # Scale labels under each dot
+        labels_text = [visual.TextStim(win, text=labels[i], color="white", height=30, pos=(scale_positions[i], -100)) for i in range(5)]
+
+        # "Press SPACE" message (hidden initially)
+        continue_text = visual.TextStim(win, text="Press SPACE to continue", color="white", height=40, pos=(0, -200))
+
+        # Warning message (hidden initially)
+        warning_message = None
+
+        # Display initial screen
+        instruction_text.draw()
         question_text.draw()
-        scale_text.draw()
+        scale_line.draw()
+        for dot, dot_label, label in zip(dots, dot_labels, labels_text):
+            dot.draw()
+            dot_label.draw()
+            label.draw()
         win.flip()
 
-        # Wait for response (keys 1-5)
-        response = None
-        clock = core.Clock() # Start timing
+        # Start timing
+        clock = core.Clock()
+        selected_index = None  # Track selection
+        space_prompt_shown = False  # Flag for "Press SPACE to continue"
+        allow_space = False  # SPACE cannot be pressed until after 7s
 
-        while response not in ["1", "2", "3", "4", "5"]:
-            response = event.waitKeys(keyList=["1", "2", "3", "4", "5"])[0]  # Only record the key, no timestamp
-        
-        responses.append(response)  # Save response
+        while True:
+            if 'escape' in event.getKeys():
+                print("Escape key pressed! Exiting...")
+                win.close()
+                core.quit()
+            
+            elapsed_time = clock.getTime()
 
-        # Ensure a **minimum** of 7 seconds has passed
-        elapsed_time = clock.getTime()
-        remaining_time = 7 - elapsed_time
-        if remaining_time > 0:
-            core.wait(remaining_time)
+            # Show "Press SPACE to continue" message after 3 seconds
+            if elapsed_time >= 3 and not space_prompt_shown:
+                space_prompt_shown = True  # Flag to avoid re-drawing every frame
+                allow_space = True  # Now SPACE can be used
 
-        # Show "Press SPACE to continue" after 7 seconds
-        continue_text = visual.TextStim(win, text="Press SPACE to continue", color="white", height=20, pos=(0, -100))
-        continue_text.draw()
-        question_text.draw()
-        scale_text.draw()
-        win.flip()
+            # Always redraw everything so the space prompt appears on time
+            instruction_text.draw()
+            question_text.draw()
+            scale_line.draw()
+            for dot, dot_label, label in zip(dots, dot_labels, labels_text):
+                dot.draw()
+                dot_label.draw()
+                label.draw()
+            
+            if space_prompt_shown:  # Ensure SPACE message always appears after 3s
+                continue_text.draw()
 
-        # Wait for space bar
-        event.waitKeys(keyList=["space"])
+            if warning_message:  # Draw warning if needed
+                warning_message.draw()
+
+            win.flip()
+
+            # Wait for a valid key press (numbers 1-5 or space)
+            keys = event.waitKeys(keyList=["1", "2", "3", "4", "5", "space"])
+
+            if "space" in keys:
+                if not allow_space:  # Prevent SPACE before 3 seconds
+                    continue  
+                if selected_index is None:  # If no selection was made, show warning
+                    warning_message = visual.TextStim(win, text="Please select a response before continuing!", color="red", height=20, pos=(0, 300))
+                else:
+                    responses.append(str(selected_index + 1))  # Save final selection
+                    break  # Exit loop when SPACE is pressed after 3s and response is recorded
+
+            elif keys[0] in ["1", "2", "3", "4", "5"]:
+                new_index = int(keys[0]) - 1  # Convert key press to index
+
+                # Reset previous selection
+                if selected_index is not None:
+                    dots[selected_index].fillColor = "white"
+                    dots[selected_index].lineColor = "white"
+
+                # Update selection
+                selected_index = new_index  
+                dots[selected_index].fillColor = "green"  # Highlight new selection
+                dots[selected_index].lineColor = "green"
+
+                # If there was a warning, remove it after selection
+                warning_message = None
 
     # Save responses to the existing experiment CSV file
     with open(csv_filename, "a", newline="") as file:
         writer = csv.writer(file)
-        writer.writerow(["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10"])
-        writer.writerow([participant_number] + responses)
+        writer.writerow(["Participant"] + [f"Q{i+1}" for i in range(len(questions))])  # Header row
+        writer.writerow([participant_number] + responses)  # Responses row
 
     # Display "Thank You" Message
-    thanks = visual.TextStim(win, text="Thank you for completing the questionnaire!", color="white", height=30)
+    thanks = visual.TextStim(win, text="Thank you for completing the questionnaire!", color="white", height=50)
     thanks.draw()
     win.flip()
     core.wait(2)  # Display for 2 seconds
@@ -340,39 +469,57 @@ def run_post_experiment_questionnaire(win, participant_number, csv_filename):
 participant_number, csv_filename = get_participant_info()
 
 # 🔶 Initialize PsychoPy Window
-win = visual.Window(size=(800, 600), color="black", units="pix")
+win = visual.Window(fullscr=True, color="black", units="pix")
 
-# 🔶 Practice
-"""
+"""# 🔶 Practice
 show_instructions(win, "In this experiment, you will either SEE a color, HEAR a color, or both.\n\n"
                   "Your task is to press the button that matches the perceived color.\n\n"
                   "Respond as quickly and accurately as possible.", 1)
-show_instructions(win,"click the RED button\n when you percieve RED\n\n"
-                  "click the BLUE\n when you percieve BLUE\n\n", 1)
-run_practice(win, (1, 1.2))
+show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
+                  "Press the BLUE\n when you percieve BLUE\n\n", 1)
+run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
 show_instructions(win, "Great job! now you will be moving on to the real task.\n\n"
                   "Respond as quickly and accurately as possible", 1)
-"""
-# 🔶 RUN TRIALS
-"""
-run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.25, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
-show_instructions(win, "You may now take up to a one minute break...\n\n", 2)
-show_instructions(win, "In the next block, you will either SEE a color, HEAR a color, or both.\n\n"
-                  "This time, please respond to what you SEE, ignore what you hear.\n\n", 1)
-show_instructions(win, "For example, if you SEE a RED circle but HEAR the word BLUE, the correct response is RED"
-### MAYBE INCLUDE A PRACTICE ROUND WITH FEEDBACK ###
-                  "Respond as quickly and accurately as possible.\n\n", 1)
-run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.25, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
-show_instructions(win, "You may now take up to a one minute break...\n\n", 2)
-run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.25, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
-show_instructions(win, "You may now take up to a one minute break...\n\n", 2)
-run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(0.375, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"], trial4=True)
-show_instructions(win, "Great job! You have completed the task\n\n", 
-                  "Now you will move on to a brief questionaire", 2)
-"""
-run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.25, 1.5), total_trials=8, trial_types=["AVI"])
-# run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A", "AVC", "AVI"])
 
+# 🔶 RUN TRIALS
+run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.25, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
+show_instructions(win, "You may now take a brief break...\n\n"
+                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed", 2)
+show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
+                  "Your task is to press the button that matches the perceived color.\n\n"
+                  "Respond as quickly and accurately as possible.", 1)
+show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
+                  "Press the BLUE\n when you percieve BLUE\n\n", 1)
+run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.25, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
+show_instructions(win, "You may now take a brief break...\n\n"
+                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed", 2)
+show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
+                  "Your task is to press the button that matches the perceived color.\n\n"
+                  "Respond as quickly and accurately as possible.", 1)
+show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
+                  "Press the BLUE\n when you percieve BLUE\n\n", 1)
+run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.25, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
+show_instructions(win, "You may now take a brief break...\n\n"
+                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed", 2)
+show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
+                  "Your task is to press the button that matches the perceived color.\n\n"
+                  "Respond as quickly and accurately as possible.", 1)
+show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
+                  "Press the BLUE\n when you percieve BLUE\n\n", 1)
+run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.25, 1.5), total_trials=120, trial_types=["V", "A", "AVC", "AVI"], trial4=True)
+show_instructions(win, "Great job! You have completed the main portion of the task\n\n" 
+                  "Now you will move on to a brief survey", 2)
+
+# 🔶 RUN QUESTIONNAIRE
+show_instructions(win, "This survey consists of 10 statements.\n\n"
+                  "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n", 1)
+show_instructions(win,  "Press 1 if you strongly disagree, 5 if you strongly agree,\nor 2-4 for responses in between.", 1)
+run_post_experiment_questionnaire(win, participant_number, csv_filename)"""
+
+# FOR TROUBLE SHOOTING                 
+# run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.25, 1.5), total_trials=8, trial_types=["AVI"])
+# run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.25, 1.5), total_trials=80, trial_types=["V", "A", "AVC", "AVI"])
+run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
 # run_post_experiment_questionnaire(win, participant_number, csv_filename)
 
 # 🔶 Close the Experiment
