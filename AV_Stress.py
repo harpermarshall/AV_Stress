@@ -342,8 +342,8 @@ def run_post_experiment_questionnaire(win, participant_number, csv_filename):
         "In the LAST BLOCK, I felt MORE stressed than in previous blocks.",
         "I found the task mentally demanding.",
         "As the experiment progressed, I believe my performance IMPROVED.",  
-        "When both sound and visual stimuli were presented,\nI relied more on the VISUAL information.",
-        "When both sound and visual stimuli were presented,\nI relied more on the AUDITORY information.",
+        "When both sound and visual stimuli were presented, I relied more on the VISUAL information.",
+        "When both sound and visual stimuli were presented, I relied more on the AUDITORY information.",
         "I was presented with MORE RED stimuli than blue stimuli throughout the experiment.",
         "I was presented with MORE BLUE stimuli than red stimuli throughout the experiment.",
         "The incongruent (mismatched) trials were harder than the congruent trials.",
@@ -352,35 +352,43 @@ def run_post_experiment_questionnaire(win, participant_number, csv_filename):
 
     responses = []  # Store all responses
 
-    # Scale setup
-    scale_positions = [-600, -300, 0, 300, 600]  # Adjusted for screen fit
+    # Define font and scale layout
+    font_style = "Arial"
+    scale_positions = [-600, -300, 0, 300, 600]
     labels = ["Strongly\nDisagree", "Disagree", "Neutral", "Agree", "Strongly\nAgree"]
 
     for question in questions:
-        # Instructions
-        instruction_text = visual.TextStim(win, text="Use the keyboard (1-5) to answer.", color="white", height=30, pos=(0, 350))
+        # Instructions (static)
+        instruction_text = visual.TextStim(win, text="Use the keyboard (1-5) to select an answer.",
+                                           font=font_style, color="lightgray", height=30, pos=(0, 380), bold=True)
 
-        # Question text
-        question_text = visual.TextStim(win, text=question, color="white", height=45, wrapWidth=1400, pos=(0, 250))
+        # Warning message (above the question, initially empty)
+        warning_message = visual.TextStim(win, text="", font=font_style,
+                                          color="red", height=30, pos=(0, 310), wrapWidth=1000, bold=True)
+
+        # Question text (large and bold)
+        question_text = visual.TextStim(win, text=question, font=font_style,
+                                        color="white", height=50, wrapWidth=1400, pos=(0, 240), bold=True)
 
         # Scale line
-        scale_line = visual.Line(win, start=(scale_positions[0], 0), end=(scale_positions[-1], 0), lineColor="white", lineWidth=5)
+        scale_line = visual.Line(win, start=(scale_positions[0], 0), end=(scale_positions[-1], 0),
+                                 lineColor="lightgray", lineWidth=6)
 
-        # Selection dots (default white) with labels 1-5
-        dots = [visual.Circle(win, radius=25, fillColor="white", lineColor="white", pos=(scale_positions[i], 0)) for i in range(5)]
-        dot_labels = [visual.TextStim(win, text=str(i+1), color="white", height=35, pos=(scale_positions[i], 50)) for i in range(5)]
-        
-        # Scale labels under each dot
-        labels_text = [visual.TextStim(win, text=labels[i], color="white", height=30, pos=(scale_positions[i], -100)) for i in range(5)]
+        # Selection dots and labels
+        dots = [visual.Circle(win, radius=30, fillColor="gray", lineColor="white", pos=(scale_positions[i], 0))
+                for i in range(5)]
+        dot_labels = [visual.TextStim(win, text=str(i+1), font=font_style, color="white",
+                                      height=40, pos=(scale_positions[i], 60)) for i in range(5)]
+        labels_text = [visual.TextStim(win, text=labels[i], font=font_style, color="lightgray",
+                                       height=35, pos=(scale_positions[i], -100)) for i in range(5)]
 
         # "Press SPACE" message (hidden initially)
-        continue_text = visual.TextStim(win, text="Press SPACE to continue", color="white", height=40, pos=(0, -200))
-
-        # Warning message (hidden initially)
-        warning_message = None
+        continue_text = visual.TextStim(win, text="Press SPACE to confirm your response",
+                                        font=font_style, color="white", height=40, pos=(0, -300))
 
         # Display initial screen
         instruction_text.draw()
+        warning_message.draw()
         question_text.draw()
         scale_line.draw()
         for dot, dot_label, label in zip(dots, dot_labels, labels_text):
@@ -393,74 +401,73 @@ def run_post_experiment_questionnaire(win, participant_number, csv_filename):
         clock = core.Clock()
         selected_index = None  # Track selection
         space_prompt_shown = False  # Flag for "Press SPACE to continue"
-        allow_space = False  # SPACE cannot be pressed until after 7s
+        allow_space = False  # SPACE cannot be pressed until after delay
 
         while True:
-            if 'escape' in event.getKeys():
-                print("Escape key pressed! Exiting...")
-                win.close()
-                core.quit()
-            
             elapsed_time = clock.getTime()
 
-            # Show "Press SPACE to continue" message after 3 seconds
+            # Show "Press SPACE" message after 3 seconds
             if elapsed_time >= 3 and not space_prompt_shown:
-                space_prompt_shown = True  # Flag to avoid re-drawing every frame
+                space_prompt_shown = True
                 allow_space = True  # Now SPACE can be used
 
-            # Always redraw everything so the space prompt appears on time
+            # Always redraw everything
             instruction_text.draw()
+            warning_message.draw()
             question_text.draw()
             scale_line.draw()
             for dot, dot_label, label in zip(dots, dot_labels, labels_text):
                 dot.draw()
                 dot_label.draw()
                 label.draw()
-            
-            if space_prompt_shown:  # Ensure SPACE message always appears after 3s
-                continue_text.draw()
 
-            if warning_message:  # Draw warning if needed
-                warning_message.draw()
+            if space_prompt_shown:  # Ensure "Press SPACE" appears after delay
+                continue_text.draw()
 
             win.flip()
 
-            # Wait for a valid key press (numbers 1-5 or space)
-            keys = event.waitKeys(keyList=["1", "2", "3", "4", "5", "space"])
+            # Wait for valid key press
+            keys = event.waitKeys(keyList=["1", "2", "3", "4", "5", "space", "escape"])
+
+            if "escape" in keys:
+                print("Escape key pressed! Exiting...")
+                win.close()
+                core.quit()
 
             if "space" in keys:
                 if not allow_space:  # Prevent SPACE before 3 seconds
                     continue  
-                if selected_index is None:  # If no selection was made, show warning
-                    warning_message = visual.TextStim(win, text="Please select a response before continuing!", color="red", height=20, pos=(0, 300))
+                if selected_index is None:  # If no selection, show warning
+                    warning_message.text = "Select an option before continuing!"
                 else:
-                    responses.append(str(selected_index + 1))  # Save final selection
-                    break  # Exit loop when SPACE is pressed after 3s and response is recorded
+                    responses.append(str(selected_index + 1))  # Save response
+                    break  # Exit loop when response is recorded
 
             elif keys[0] in ["1", "2", "3", "4", "5"]:
-                new_index = int(keys[0]) - 1  # Convert key press to index
+                new_index = int(keys[0]) - 1
 
                 # Reset previous selection
                 if selected_index is not None:
-                    dots[selected_index].fillColor = "white"
+                    dots[selected_index].fillColor = "gray"
                     dots[selected_index].lineColor = "white"
 
                 # Update selection
                 selected_index = new_index  
-                dots[selected_index].fillColor = "green"  # Highlight new selection
+                dots[selected_index].fillColor = "green"  # Highlight selected response
                 dots[selected_index].lineColor = "green"
 
-                # If there was a warning, remove it after selection
-                warning_message = None
+                # Clear warning message when selection is made
+                warning_message.text = ""
 
-    # Save responses to the existing experiment CSV file
+    # Save responses to CSV
     with open(csv_filename, "a", newline="") as file:
         writer = csv.writer(file)
         writer.writerow(["Participant"] + [f"Q{i+1}" for i in range(len(questions))])  # Header row
         writer.writerow([participant_number] + responses)  # Responses row
 
     # Display "Thank You" Message
-    thanks = visual.TextStim(win, text="Thank you for completing the questionnaire!", color="white", height=50)
+    thanks = visual.TextStim(win, text="Thank you for completing the questionnaire!",
+                             font=font_style, color="white", height=55, bold=True)
     thanks.draw()
     win.flip()
     core.wait(2)  # Display for 2 seconds
@@ -471,7 +478,7 @@ participant_number, csv_filename = get_participant_info()
 # 🔶 Initialize PsychoPy Window
 win = visual.Window(fullscr=True, color="black", units="pix")
 
-"""# 🔶 Practice
+# 🔶 Practice
 show_instructions(win, "In this experiment, you will either SEE a color, HEAR a color, or both.\n\n"
                   "Your task is to press the button that matches the perceived color.\n\n"
                   "Respond as quickly and accurately as possible.", 1)
@@ -514,12 +521,12 @@ show_instructions(win, "Great job! You have completed the main portion of the ta
 show_instructions(win, "This survey consists of 10 statements.\n\n"
                   "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n", 1)
 show_instructions(win,  "Press 1 if you strongly disagree, 5 if you strongly agree,\nor 2-4 for responses in between.", 1)
-run_post_experiment_questionnaire(win, participant_number, csv_filename)"""
+run_post_experiment_questionnaire(win, participant_number, csv_filename)
 
 # FOR TROUBLE SHOOTING                 
 # run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.25, 1.5), total_trials=8, trial_types=["AVI"])
 # run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.25, 1.5), total_trials=80, trial_types=["V", "A", "AVC", "AVI"])
-run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
+# run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
 # run_post_experiment_questionnaire(win, participant_number, csv_filename)
 
 # 🔶 Close the Experiment
