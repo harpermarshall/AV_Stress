@@ -67,8 +67,15 @@ def show_instructions(win, text, duration):
     win.flip()
 
     event.clearEvents(eventType='keyboard')
-    while "space" not in event.getKeys():
-        pass
+    while True:
+        keys = event.getKeys()
+        if 'escape' in keys:
+            print("Escape key pressed! Exiting...")
+            win.close()
+            core.quit()
+        elif 'space' in keys:
+            break
+
     win.flip()
 
 def get_ready(win, text):
@@ -98,7 +105,7 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
     if trial4:
         # If trial4 is True, set the decreasing ITI range
         iti_start = iti_range[0]
-        iti_end = 0.375  # Desired lower bound for trial4
+        iti_end = 0  # Desired lower bound for trial4
     total_trial_types = len(trial_types)
     trials_per_type = total_trials // total_trial_types  # // rounds down to nearest int
     response_keys = ["r", "b"]  # Response keys
@@ -151,8 +158,9 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
             print(f"  🔹 Trial {i+1}: {trial}")  # Debugging print to check each trial
 
             if trial["audio"]:
-                trial["audio"].stop() # Stops sound from previous audio trials
+                trial["audio"].stop()  # Stops sound from previous audio trials
 
+            # Clear events at the start of the trial
             event.clearEvents(eventType='keyboard')
 
             # Prepare visual stimulus
@@ -171,10 +179,8 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
                 print(f"🎵 Audio started at: {audio_onset_time:.3f} sec")
             
             # Introduce 300 ms delay before showing visual stimulus
-            core.wait(0.3)
-            # Start clock for RT recordings
-            clock = core.Clock()
-
+            core.wait(0.27)
+            
             # Remove the fixation cross just before stimulus onset
             fixation.autoDraw = False
             win.flip()
@@ -186,20 +192,39 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
                 visual_onset_time = core.getTime()  # Get actual visual onset time
                 print(f"🎨 Visual stimulus appeared at: {visual_onset_time:.3f} sec")
 
-            # Start response collection from the correct time
-            response = event.waitKeys(maxWait=2.0, keyList=response_keys, timeStamped=clock)
-            win.flip()
+            # Clear any residual key events immediately after the visual stimulus is shown
+            event.clearEvents(eventType='keyboard')
 
-            # If no response...
-            if response is None:
-                key, rt = "No Response", None
-                if trial4:  # Only show feedback if it's a trial 4 condition
+            # Start the RT clock after clearing events
+            clock = core.Clock()
+            start_time = clock.getTime()
+
+            # Start response collection from the correct time
+            response = None
+            key, rt = "No Response", None
+
+            while response is None and clock.getTime() - start_time < .850:
+                keys = event.getKeys(timeStamped=clock)
+                for k in keys:
+                    key_name, key_rt = k
+                    if key_name.lower() in response_keys:  # handles 'r' or 'b' (case-insensitive)
+                        response = (key_name.lower(), key_rt)
+                        break
+                    elif key_name == "escape":
+                        print("Escape key pressed! Exiting...")
+                        win.close()
+                        core.quit()
+                core.wait(0.01)
+
+            # Handle response outcome
+            if response is not None:
+                key, rt = response
+            else:
+                if trial4:
                     feedback_text = visual.TextStim(win, text="Too Slow", color="red", height=40)
                     feedback_text.draw()
                     win.flip()
                     core.wait(0.6)  # Display feedback for 0.6 second
-            else:
-                key, rt = response[0]
 
             # Turn fixation cross on continuously
             fixation.autoDraw = True
@@ -327,36 +352,45 @@ def run_practice(win, iti_range, total_trials, trial_types):
             visual_onset_time = core.getTime()  # Get actual visual onset time
             print(f"🎨 Visual stimulus appeared at: {visual_onset_time:.3f} sec")
 
-        # Collect response
-        response = event.waitKeys(maxWait=2.0, keyList=response_keys)
-        win.flip()
+        # Collect response safely
+        clock = core.Clock()
+        response = None
+        key, rt, correct = "No Response", None, None
+        start_time = clock.getTime()
 
-        # Default values
-        key, correct = "No Response", None
-        if response:
-            key = response[0]
-            
+        while response is None and clock.getTime() - start_time < 0.850:
+            keys = event.getKeys(timeStamped=clock)
+            for k in keys:
+                key_name, key_rt = k
+                if key_name.lower() in response_keys:
+                    response = (key_name.lower(), key_rt)
+                    break
+                elif key_name == "escape":
+                    print("Escape key pressed! Exiting...")
+                    win.close()
+                    core.quit()
+            core.wait(0.01)
+
+        # Evaluate response
+        if response is not None:
+            key, rt = response
+
         # Determine correctness
         if trial["type"] in ["V", "A", "AVC"]:
             expected_response = "b" if (trial["visual"] == "blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "r"
             correct = key == expected_response
 
-            if key == "No Response":
-                correct = None
-            else:
-                correct = key == expected_response
-
             # Provide feedback
-            if correct is None:
+            if rt is None:
                 feedback_text = visual.TextStim(win, text="Too Slow!", color="red", height=40)
             elif correct:
                 feedback_text = visual.TextStim(win, text="✓ Correct", color="green", height=40)
             else:
                 feedback_text = visual.TextStim(win, text="✗ Incorrect", color="red", height=40)
 
-        feedback_text.draw()
-        win.flip()
-        core.wait(0.6)  # Show feedback for 0.6 second
+            feedback_text.draw()
+            win.flip()
+            core.wait(0.6)
 
         # **ITI should be here, after feedback**
         iti = random.uniform(iti_range[0], iti_range[1])
@@ -368,9 +402,10 @@ def run_practice(win, iti_range, total_trials, trial_types):
 def run_post_experiment_questionnaire(win, participant_number, csv_filename):
     questions = [
         "Overall, I felt pressured to respond quickly during the task.",
-        "In the LAST BLOCK, I felt MORE stressed than in previous blocks.",
+        "In the LAST SECTION, I felt MORE stressed than in previous sections.",
         "I found the task mentally demanding.",
-        "As the experiment progressed, I believe my performance IMPROVED.",  
+        "As the experiment progressed, I believe my performance IMPROVED.", 
+        "I did NOT have a consistant strategy throughout the entirety of the experiment.", 
         "When both sound and visual stimuli were presented, I relied more on the VISUAL information.",
         "When both sound and visual stimuli were presented, I relied more on the AUDITORY information.",
         "I was presented with MORE RED stimuli than blue stimuli throughout the experiment.",
@@ -428,17 +463,18 @@ def run_post_experiment_questionnaire(win, participant_number, csv_filename):
 
         # Start timing
         clock = core.Clock()
-        selected_index = None  # Track selection
-        space_prompt_shown = False  # Flag for "Press SPACE to continue"
-        allow_space = False  # SPACE cannot be pressed until after delay
+        selected_index = None
+        space_prompt_shown = False
+        allow_space = False
+        done = False
 
-        while True:
+        while not done:
             elapsed_time = clock.getTime()
 
-            # Show "Press SPACE" message after 3 seconds
-            if elapsed_time >= 3 and not space_prompt_shown:
+            # Show "Press SPACE to continue" only if both conditions are met
+            if elapsed_time >= 4 and selected_index is not None:
                 space_prompt_shown = True
-                allow_space = True  # Now SPACE can be used
+                allow_space = True
 
             # Always redraw everything
             instruction_text.draw()
@@ -450,30 +486,40 @@ def run_post_experiment_questionnaire(win, participant_number, csv_filename):
                 dot_label.draw()
                 label.draw()
 
-            if space_prompt_shown:  # Ensure "Press SPACE" appears after delay
+            if space_prompt_shown:
                 continue_text.draw()
 
             win.flip()
 
-            # Wait for valid key press
-            keys = event.waitKeys(keyList=["1", "2", "3", "4", "5", "space", "escape"])
+            # Check keys
+            keys = event.getKeys()
+            for key in keys:
+                if key == "escape":
+                    print("Escape key pressed! Exiting...")
+                    win.close()
+                    core.quit()
 
-            if "escape" in keys:
-                print("Escape key pressed! Exiting...")
-                win.close()
-                core.quit()
+                elif key == "space":
+                    if allow_space:
+                        responses.append(str(selected_index + 1))
+                        done = True  # Exit main loop
+                        break
+                    else:
+                        warning_message.text = "Wait 2 seconds AND make a selection before continuing."
 
-            if "space" in keys:
-                if not allow_space:  # Prevent SPACE before 3 seconds
-                    continue  
-                if selected_index is None:  # If no selection, show warning
-                    warning_message.text = "Select an option before continuing!"
-                else:
-                    responses.append(str(selected_index + 1))  # Save response
-                    break  # Exit loop when response is recorded
+                elif key in ["1", "2", "3", "4", "5"]:
+                    new_index = int(key) - 1
 
-            elif keys[0] in ["1", "2", "3", "4", "5"]:
-                new_index = int(keys[0]) - 1
+                    # Reset previous selection
+                    if selected_index is not None:
+                        dots[selected_index].fillColor = "gray"
+                        dots[selected_index].lineColor = "white"
+
+                    # Update selection
+                    selected_index = new_index
+                    dots[selected_index].fillColor = "green"
+                    dots[selected_index].lineColor = "green"
+                    warning_message.text = ""
 
                 # Reset previous selection
                 if selected_index is not None:
@@ -507,65 +553,76 @@ participant_number, csv_filename = get_participant_info()
 # 🔶 Initialize PsychoPy Window
 win = visual.Window(fullscr=True, color="black", units="pix")
 
-""" 🔶 Practice
-show_instructions(win, "In this experiment, you will either SEE a color, HEAR a color, or both.\n\n"
+"""# 🔶 Practice
+show_instructions(win, "This experiment will be broken up into 4 main sections and then a short survey.\n\n"
+                  "You will have the option to take a brief break between sections.", 10)
+show_instructions(win, "In the experiment, you will either:\n\nSEE a colored circle,\nHEAR a the name of a color,\nor BOTH.\n\n"
                   "Your task is to press the button that matches the perceived color.\n\n"
-                  "Respond as quickly and accurately as possible.", 1)
-show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
-                  "Press the BLUE\n when you percieve BLUE\n\n", 1)
+                  "In between trials, keep your eyes on the fixation cross in the center of the screen", 11)
+show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
+                  "Press the BLUE button\n when you percieve BLUE.\n\n"
+                  "You can practice selecting the correct color in this short practice section.", 12)
 get_ready(win, "Get Ready!\nPractice will begin in...") 
 run_practice(win, iti_range=(1.75, 2), total_trials=12, trial_types=["V", "A"])
-show_instructions(win, "Great job! now you will be moving on to the real task.\n\n"
-                  "Respond as quickly and accurately as possible", 1)"""
-get_ready(win, "Get Ready!\nTask will begin in...")                
+show_instructions(win, "Great job!\n\nIn the real task, you will not be told if your responses are correct or incorrect like you saw in the practice.", 8)
+show_instructions(win, "Now you will be moving on to the real task.\n\n"
+                  "Just like the practice, you will have less than a second to respond after the color is presented.\n\n"
+                  "Respond as quickly and accurately as possible.", 7)
+show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
+                  "Press the BLUE button\n when you percieve BLUE.", 5)
+get_ready(win, "Get Ready!\nSection 1 will begin in...")                
 
 # 🔶 RUN TRIALS
-"""run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
-show_instructions(win, "You may now take a brief break...\n\n"
-                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed", 2)
+run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
+show_instructions(win, "You completed 1/4 sections! You may now take a brief break...\n\n"
+                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)
 show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
                   "Your task is to press the button that matches the perceived color.\n\n"
-                  "Respond as quickly and accurately as possible.", 1)
-show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
-                  "Press the BLUE\n when you percieve BLUE\n\n", 1)
-get_ready(win, "Get Ready!\nTask will begin in...")                 
+                  "You will have less than a second to respond after the color is presented.\n\n"
+                  "Respond as quickly and accurately as possible.", 8)
+show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
+                  "Press the BLUE button\n when you percieve BLUE.", 5)
+get_ready(win, "Get Ready!\nSection 2 will begin in...")                 
 run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
-show_instructions(win, "You may now take a brief break...\n\n"
-                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed", 2)
+show_instructions(win, "You completed 2/4 sections! You may now take a brief break...\n\n"
+                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)
 show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
                   "Your task is to press the button that matches the perceived color.\n\n"
-                  "Respond as quickly and accurately as possible.", 1)
-show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
-                  "Press the BLUE\n when you percieve BLUE\n\n", 1)"""
-get_ready(win, "Get Ready!\nTask will begin in...") 
+                  "You will have 2 seconds to respond after the color is presented.\n\n"
+                  "Respond as quickly and accurately as possible.", 8)
+show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
+                  "Press the BLUE button\n when you percieve BLUE.", 5)
+get_ready(win, "Get Ready!\nSection 3 will begin in...") 
 run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
-show_instructions(win, "You may now take a brief break...\n\n"
-                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed", 2)
+show_instructions(win, "You completed 3/4 sections! You may now take a brief break...\n\n"
+                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)
 show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
                   "Your task is to press the button that matches the perceived color.\n\n"
-                  "Respond as quickly and accurately as possible.", 1)
-show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
-                  "Press the BLUE\n when you percieve BLUE\n\n", 1)
-get_ready(win, "Get Ready!\nTask will begin in...") 
+                  "You will have 2 seconds to respond after the color is presented.\n\n"
+                  "Respond as quickly and accurately as possible.", 8)
+show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
+                  "Press the BLUE button\n when you percieve BLUE.", 5)
+get_ready(win, "Get Ready!\nSection 4 will begin in...") 
 run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.75, 2), total_trials=120, trial_types=["V", "A", "AVC", "AVI"], trial4=True)
-show_instructions(win, "Great job! You have completed the main portion of the task\n\n" 
-                  "Now you will move on to a brief survey", 2)
+show_instructions(win, "Great job! You have completed the main portion of the task!\n\n" 
+                  "Now you will move on to a brief survey.", 7)
 
 # 🔶 RUN QUESTIONNAIRE
 show_instructions(win, "This survey consists of 10 statements.\n\n"
-                  "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n", 1)
-show_instructions(win,  "Press 1 if you strongly disagree, 5 if you strongly agree,\nor 2-4 for responses in between.", 1)
+                  "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n", 9)
+show_instructions(win,  "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 8)
 run_post_experiment_questionnaire(win, participant_number, csv_filename)
-
+"""
 # FOR TROUBLE SHOOTING 
 # show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
 #                 "Press the BLUE\n when you percieve BLUE\n\n", 1)
 # get_ready(win, "Get Ready!\nTask will begin in...")      
 # run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=8, trial_types=["AVI"])
-# run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.75, 2), total_trials=8, trial_types=["V", "A", "AVC", "AVI"])
+run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.00, 1.25), total_trials=16, trial_types=["V", "A", "AVC", "AVI"], trial4 = True)
 # run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
 # run_post_experiment_questionnaire(win, participant_number, csv_filename)
 
 # 🔶 Close the Experiment
 win.close()
 core.quit()
+
