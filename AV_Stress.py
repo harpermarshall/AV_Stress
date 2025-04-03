@@ -61,7 +61,14 @@ def show_instructions(win, text, duration):
     
     instructions.draw()
     win.flip()
-    core.wait(duration)
+    # Use a non-blocking wait loop to avoid OS event bug instead of "core.wait(duration)"
+    wait_clock = core.Clock()
+    while wait_clock.getTime() < duration:
+        if event.getKeys(['escape']):
+            print("Escape key pressed during wait! Exiting...")
+            win.close()
+            core.quit()
+        pass
     instructions.draw()
     continue_text.draw()
     win.flip()
@@ -179,7 +186,7 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, tota
                 print(f"🎵 Audio started at: {audio_onset_time:.3f} sec")
             
             # Introduce 300 ms delay before showing visual stimulus
-            core.wait(0.27)
+            #core.wait(0.04) #uncomment if visual stimuli appear too early
             
             # Remove the fixation cross just before stimulus onset
             fixation.autoDraw = False
@@ -398,22 +405,8 @@ def run_practice(win, iti_range, total_trials, trial_types):
 
         print(f"✅ Practice Trial {i+1} completed. ITI: {round(iti, 3)}s")
 
-# 🔷 Function to Run Post-Experiment Questionnaire
-def run_post_experiment_questionnaire(win, participant_number, csv_filename):
-    questions = [
-        "Overall, I felt pressured to respond quickly during the task.",
-        "In the LAST SECTION, I felt MORE stressed than in previous sections.",
-        "I found the task mentally demanding.",
-        "As the experiment progressed, I believe my performance IMPROVED.", 
-        "I did NOT have a consistant strategy throughout the entirety of the experiment.", 
-        "When both sound and visual stimuli were presented, I relied more on the VISUAL information.",
-        "When both sound and visual stimuli were presented, I relied more on the AUDITORY information.",
-        "I was presented with MORE RED stimuli than blue stimuli throughout the experiment.",
-        "I was presented with MORE BLUE stimuli than red stimuli throughout the experiment.",
-        "The incongruent (mismatched) trials were harder than the congruent trials.",
-        "I felt confident in my responses throughout the experiment."
-    ]
-
+# 🔷 Function to Run Experiment Questionnaire
+def run_experiment_questionnaire(win, participant_number, questions, block_num):
     responses = []  # Store all responses
 
     # Define font and scale layout
@@ -472,7 +465,7 @@ def run_post_experiment_questionnaire(win, participant_number, csv_filename):
             elapsed_time = clock.getTime()
 
             # Show "Press SPACE to continue" only if both conditions are met
-            if elapsed_time >= 4 and selected_index is not None:
+            if elapsed_time >= 3 and selected_index is not None:
                 space_prompt_shown = True
                 allow_space = True
 
@@ -502,10 +495,10 @@ def run_post_experiment_questionnaire(win, participant_number, csv_filename):
                 elif key == "space":
                     if allow_space:
                         responses.append(str(selected_index + 1))
-                        done = True  # Exit main loop
+                        done = True
                         break
                     else:
-                        warning_message.text = "Wait 2 seconds AND make a selection before continuing."
+                        warning_message.text = "Wait 3 seconds AND make a selection before continuing."
 
                 elif key in ["1", "2", "3", "4", "5"]:
                     new_index = int(key) - 1
@@ -521,31 +514,37 @@ def run_post_experiment_questionnaire(win, participant_number, csv_filename):
                     dots[selected_index].lineColor = "green"
                     warning_message.text = ""
 
-                # Reset previous selection
-                if selected_index is not None:
-                    dots[selected_index].fillColor = "gray"
-                    dots[selected_index].lineColor = "white"
+    # Save responses to a per-participant survey CSV
+    data_folder = "AV_Stress_Data"
+    os.makedirs(data_folder, exist_ok=True)
+    survey_filename = os.path.join(data_folder, f"AV_Stress_Survey_{participant_number}.csv")
+    file_exists = os.path.exists(survey_filename)
 
-                # Update selection
-                selected_index = new_index  
-                dots[selected_index].fillColor = "green"  # Highlight selected response
-                dots[selected_index].lineColor = "green"
-
-                # Clear warning message when selection is made
-                warning_message.text = ""
-
-    # Save responses to CSV
-    with open(csv_filename, "a", newline="") as file:
+    with open(survey_filename, "a", newline="") as file:
         writer = csv.writer(file)
-        writer.writerow(["Participant"] + [f"Q{i+1}" for i in range(len(questions))])  # Header row
-        writer.writerow([participant_number] + responses)  # Responses row
+        if not file_exists:
+            writer.writerow(["Participant", "Block"] + [f"Q{i+1}" for i in range(len(questions))])  # Header
+        writer.writerow([participant_number, block_num] + responses)  # One row per block
 
-    # Display "Thank You" Message
-    thanks = visual.TextStim(win, text="Thank you for completing the questionnaire!",
-                             font=font_style, color="white", height=55, bold=True)
-    thanks.draw()
-    win.flip()
-    core.wait(2)  # Display for 2 seconds
+block_questions = [
+    "1. I felt alert and focused during this section.",
+    "2. I felt motivated to do well during this section.",
+    "3. I felt frustrated or irritated during this section.",
+    "4. I found this section emotionally draining.",
+    "5. I felt stressed or tense during this section.",
+    "6. I felt overwhelmed by the demands of this section.",
+    "7. I was concerned about how well I was doing during this section.",
+    "8. I found myself distracted during this section.",
+    "9. I was worried I was making too many mistakes in this section",
+    "10. I used a specific strategy to help me respond during this entirety of this section.",
+    "11. This section felt more difficult than the others.",
+    "12. I found this section enjoyable.",
+    "13. I changed my strategy during the section.",
+    "14. I relied more on the AUDIO than the visual information in this section.",
+    "15. I relied more on the VISUAL than the audio information in this section.",
+]
+
+# RUNNING EXPERIMENT ----------------------------------------------------------------------------------------------------------------------------------------------
 
 # 🔶 Get Participant Info
 participant_number, csv_filename = get_participant_info()
@@ -554,73 +553,89 @@ participant_number, csv_filename = get_participant_info()
 win = visual.Window(fullscr=True, color="black", units="pix")
 
 """# 🔶 Practice
-show_instructions(win, "This experiment will be broken up into 4 main sections and then a short survey.\n\n"
-                  "You will have the option to take a brief break between sections.", 10)
-show_instructions(win, "In the experiment, you will either:\n\nSEE a colored circle,\nHEAR a the name of a color,\nor BOTH.\n\n"
+show_instructions(win, "This experiment will be broken up into 4 main sections with a short survey after each section.\n\n"
+                  "You will have the option to take a brief break after each survey.", 8)
+show_instructions(win, "In the main portion of this experiment, you will either:\n\nSEE a colored circle,\nHEAR the name of a color,\nor BOTH.\n\n"
                   "Your task is to press the button that matches the perceived color.\n\n"
-                  "In between trials, keep your eyes on the fixation cross in the center of the screen", 11)
+                  "In between trials, keep your eyes on the fixation cross in the center of the screen", 9)
 show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
                   "Press the BLUE button\n when you percieve BLUE.\n\n"
-                  "You can practice selecting the correct color in this short practice section.", 12)
+                  "You can practice selecting the correct color in this short practice section.", 8)
 get_ready(win, "Get Ready!\nPractice will begin in...") 
 run_practice(win, iti_range=(1.75, 2), total_trials=12, trial_types=["V", "A"])
 show_instructions(win, "Great job!\n\nIn the real task, you will not be told if your responses are correct or incorrect like you saw in the practice.", 8)
 show_instructions(win, "Now you will be moving on to the real task.\n\n"
                   "Just like the practice, you will have less than a second to respond after the color is presented.\n\n"
-                  "Respond as quickly and accurately as possible.", 7)
+                  "Respond as quickly and accurately as possible.", 6)
 show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
-                  "Press the BLUE button\n when you percieve BLUE.", 5)
-get_ready(win, "Get Ready!\nSection 1 will begin in...")                
+                  "Press the BLUE button\n when you percieve BLUE.", 3) """                
 
 # 🔶 RUN TRIALS
-run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
-show_instructions(win, "You completed 1/4 sections! You may now take a brief break...\n\n"
+        # block 1
+get_ready(win, "Get Ready!\nSection 1 will begin in...")
+run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=120, trial_types=["AVC", "AVI"])
+show_instructions(win, "Great job, you competed Section 1! You will now move on to a brief survey.", 3)
+show_instructions(win, "This survey consists of 15 statements.\n\n"
+                  "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n", 
+                  "Answer based off of your experience in Section 1 ONLY", 8)
+show_instructions(win,  "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
+run_experiment_questionnaire(win, participant_number, block_questions, block_num=1)
+show_instructions(win, "You may now take a brief break...\n\n"
                   "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)
+        # block 2
 show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
                   "Your task is to press the button that matches the perceived color.\n\n"
                   "You will have less than a second to respond after the color is presented.\n\n"
-                  "Respond as quickly and accurately as possible.", 8)
+                  "Respond as quickly and accurately as possible.", 6)
 show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
-                  "Press the BLUE button\n when you percieve BLUE.", 5)
+                  "Press the BLUE button\n when you percieve BLUE.", 3)
 get_ready(win, "Get Ready!\nSection 2 will begin in...")                 
 run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
-show_instructions(win, "You completed 2/4 sections! You may now take a brief break...\n\n"
+show_instructions(win, "Great job, you completed Section 2! You will now move on to another 15 question survey.", 2)
+show_instructions(win, "Answer based off of your experience in Section 2 ONLY", 2)
+show_instructions(win,  "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
+run_experiment_questionnaire(win, participant_number, block_questions, block_num=2)
+show_instructions(win, "You may now take a brief break...\n\n"
                   "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)
+        # block 3
 show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
                   "Your task is to press the button that matches the perceived color.\n\n"
-                  "You will have 2 seconds to respond after the color is presented.\n\n"
-                  "Respond as quickly and accurately as possible.", 8)
+                  "You will have less than a second to respond after the color is presented.\n\n"
+                  "Respond as quickly and accurately as possible.", 6)
 show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
-                  "Press the BLUE button\n when you percieve BLUE.", 5)
+                  "Press the BLUE button\n when you percieve BLUE.", 3)
 get_ready(win, "Get Ready!\nSection 3 will begin in...") 
 run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=120, trial_types=["V", "A", "AVC", "AVI"])
-show_instructions(win, "You completed 3/4 sections! You may now take a brief break...\n\n"
+show_instructions(win, "Great job, you completed Section 3! You will now move on to another 15 question survey.", 2)
+show_instructions(win, "Answer based off of your experience in Section 3 ONLY", 8)
+show_instructions(win, "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
+run_experiment_questionnaire(win, participant_number, block_questions, block_num=3)
+show_instructions(win, "You may now take a brief break...\n\n"
                   "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)
+        # block 4
 show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
                   "Your task is to press the button that matches the perceived color.\n\n"
-                  "You will have 2 seconds to respond after the color is presented.\n\n"
-                  "Respond as quickly and accurately as possible.", 8)
+                  "You will have less than a second to respond after the color is presented.\n\n"
+                  "Respond as quickly and accurately as possible.", 6)
 show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
-                  "Press the BLUE button\n when you percieve BLUE.", 5)
+                  "Press the BLUE button\n when you percieve BLUE.", 3)
 get_ready(win, "Get Ready!\nSection 4 will begin in...") 
 run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.75, 2), total_trials=120, trial_types=["V", "A", "AVC", "AVI"], trial4=True)
-show_instructions(win, "Great job! You have completed the main portion of the task!\n\n" 
-                  "Now you will move on to a brief survey.", 7)
+show_instructions(win, "Great job, you completed Section 4! You will now move on to your last 15 question survey.", 2)
+show_instructions(win, "Answer based off of your experience in Section 4 ONLY", 8)
+show_instructions(win, "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
+run_experiment_questionnaire(win, participant_number, block_questions, block_num=4)
+show_instructions(win, "You have now completed the experiment!\n",
+                  "Thank you so much for participating!", 3) 
 
-# 🔶 RUN QUESTIONNAIRE
-show_instructions(win, "This survey consists of 10 statements.\n\n"
-                  "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n", 9)
-show_instructions(win,  "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 8)
-run_post_experiment_questionnaire(win, participant_number, csv_filename)
-"""
 # FOR TROUBLE SHOOTING 
 # show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
 #                 "Press the BLUE\n when you percieve BLUE\n\n", 1)
 # get_ready(win, "Get Ready!\nTask will begin in...")      
-# run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=8, trial_types=["AVI"])
-run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.00, 1.25), total_trials=16, trial_types=["V", "A", "AVC", "AVI"], trial4 = True)
+# run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=120, trial_types=["AVC"])
+# run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.00, 1.25), total_trials=120, trial_types=["V", "A", "AVC", "AVI"], trial4 = True)
 # run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
-# run_post_experiment_questionnaire(win, participant_number, csv_filename)
+# run_experiment_questionnaire(win, participant_number, block_questions, block_num=4)
 
 # 🔶 Close the Experiment
 win.close()

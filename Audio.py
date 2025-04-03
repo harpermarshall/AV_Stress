@@ -5,7 +5,7 @@ from pydub import AudioSegment
 from pydub.generators import Sine
 
 # Define the project folder path
-project_folder = os.path.expanduser("~/Desktop/Project 1")
+project_folder = os.path.expanduser("~/Desktop/Project 1/Sounds")
 os.makedirs(project_folder, exist_ok=True)  # Ensure the folder exists
 
 # Create Speech Using Edge-TTS
@@ -68,4 +68,17 @@ async def main():
     print(f"All audio files saved in: {project_folder}")
 
 # Run the asyncio event loop
-asyncio.run(main())
+# asyncio.run(main())
+
+from pydub import AudioSegment
+
+# Load the MP3
+sound = sound = AudioSegment.from_file(os.path.join(project_folder, "blue.mp3"))
+
+# Speed up by 1.25x
+faster = sound._spawn(sound.raw_data, overrides={
+    "frame_rate": int(sound.frame_rate * 1.25)
+}).set_frame_rate(sound.frame_rate)
+
+# Export it
+faster.export("blue_1.25x.mp3", format="mp3")
