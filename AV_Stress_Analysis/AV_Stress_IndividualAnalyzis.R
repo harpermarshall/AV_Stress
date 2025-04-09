@@ -4,10 +4,11 @@ library(ggpubr)
 library(ggsignif)
 
 # Set working directory
-setwd("/Users/harpermarshall/Desktop/Project 1/AV_Stress_Pilot_Data/")
+setwd("/Users/harpermarshall/Desktop/Project 1/AV_Stress_Data/")
 
 # Read the INDIVIDUAL participant data
-df <- read.csv("(I)AV_Stress_PilotData_P003.csv")
+df <- read.csv("AV_Stress_Results_P005.csv")
+survey_df <- read.csv("AV_Stress_Survey_P001.csv")
 
 ######################
 ### CLEAN THE DATA ###
@@ -261,3 +262,4 @@ t_test_results <- map_dfr(group_pairs, function(pair) {
 })
 
 print(t_test_results)
+
