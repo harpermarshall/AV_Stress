@@ -231,13 +231,9 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, visu
             if trial4:
                 update_countdown_timer(timer_gui, countdown_start_time, countdown_duration)
 
-            # Draw fixation cross and wait 0.5 seconds with timer updating
+            # Draw fixation cross
             fixation.draw()
             win.flip()
-            if trial4:
-                wait_with_timer(0.5, timer_gui, countdown_start_time, countdown_duration, win)
-            else:
-                core.wait(0.5)
 
             audio_onset_time = core.getTime()
             if beep:
@@ -384,19 +380,16 @@ def run_practice(win, iti_range, total_trials, trial_types):
                 print("Escape key pressed! Exiting...")
                 win.close()
                 core.quit()
-        
-        print(f"🔹 Practice Trial {i+1}: {trial}")  # Debugging print
 
         if trial["audio"]:
             trial["audio"].stop()  # Stop previous sound
 
-        # Show fixation cross
-        fixation.draw()
-        win.flip()
-        core.wait(0.5)  # Fixation for 500ms
-
         event.clearEvents(eventType='keyboard')
         clock = core.Clock()
+
+        # Stop fixation cross before stimuli are presented
+        fixation.autoDraw = False
+        win.flip()
 
         # Prepare visual stimulus
         if trial["visual"]:
@@ -408,15 +401,12 @@ def run_practice(win, iti_range, total_trials, trial_types):
         # Start timing
         audio_onset_time = core.getTime()
 
-        # Play auditory stimulus immediately
+        # Play auditory stimulus
         if beep:
             beep.play()
             print(f"🎵 Audio started at: {audio_onset_time:.3f} sec")
 
-        # Introduce 300 ms delay before showing visual stimulus
-        core.wait(0.3)
-
-        # Now display the visual stimulus
+        # Display the visual stimulus
         if trial["visual"]:
             circle.draw()
             win.flip()
@@ -461,13 +451,14 @@ def run_practice(win, iti_range, total_trials, trial_types):
 
             feedback_text.draw()
             win.flip()
-            core.wait(0.6)
+            core.wait(0.4)
+            # Start new fixation cross
+            fixation.autoDraw = True
+            win.flip()
 
-        # **ITI should be here, after feedback**
+        # ITI should be here, after feedback
         iti = random.uniform(iti_range[0], iti_range[1])
         core.wait(iti)  # Inter-Trial Interval
-
-        print(f"✅ Practice Trial {i+1} completed. ITI: {round(iti, 3)}s")
 
 # 🔷 Function to Run Experiment Questionnaire
 def run_experiment_questionnaire(win, participant_number, questions, block_num):
@@ -710,9 +701,9 @@ show_instructions(win, "You have now completed the experiment!\n"
 # show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
 #                 "Press the BLUE\n when you percieve BLUE\n\n", 1)
 # get_ready(win, "Get Ready!\nTask will begin in...")      
-run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=40, visual_delay=0)
-run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=40, visual_delay=0)
-run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=40, visual_delay=0)
+#run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=40, visual_delay=0.21)
+#run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=40, visual_delay=0.04)
+run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.75, 2), total_trials=20, visual_delay=0.14, trial4 = True)
 # run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.00, 1.25), total_trials=120, trial_types=["V", "A", "AVC", "AVI"], trial4 = True)
 # run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
 # run_experiment_questionnaire(win, participant_number, block_questions, block_num=4)

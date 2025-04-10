@@ -26,9 +26,9 @@ def get_participant_info():
             continue
 
         participant_number = f"P{int(participant_number):03d}"
-        data_folder = "AV_Stress_Data"
+        data_folder = "AV_SOA_Data"
         os.makedirs(data_folder, exist_ok=True)
-        csv_filename = os.path.abspath(os.path.join(data_folder, f"AV_Stress_Results_{participant_number}.csv"))
+        csv_filename = os.path.abspath(os.path.join(data_folder, f"AV_SOA_Results_{participant_number}.csv"))
 
         # Warn if file exists
         if os.path.isfile(csv_filename):
@@ -121,7 +121,7 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, visu
     with open(csv_filename, "a", newline="") as file:
         writer = csv.writer(file)
         if not file_exists:
-            writer.writerow(["Participant", "Block", "Trial", "Type", "Visual", "Audio", "Response", "RT", "Correct", "ITI"])
+            writer.writerow(["Participant", "Block", "Trial", "Type", "Visual", "Audio", "Response", "RT", "Correct", "Visual Delay"])
 
         trials = []
         proportions = {"A": 0.3, "V": 0.3, "AVC": 0.3, "AVI": 0.1}
@@ -179,11 +179,6 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, visu
             # Prepare audio
             beep = trial["audio"]
 
-            # Draw fixation cross and wait 0.5 seconds with timer updating
-            fixation.draw()
-            win.flip()
-            core.wait(0.5)
-
             audio_onset_time = core.getTime()
             if beep:
                 beep.play()
@@ -223,10 +218,8 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, visu
 
             if response is not None:
                 key, rt = response
-            else:
-                core.wait(0.4)
 
-            fixation.autoDraw = True
+            fixation.draw()
             win.flip()
 
             correct = None
@@ -248,7 +241,7 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, visu
                 key if key is not None else "NA",
                 rt if rt is not None else "NA",
                 correct if correct is not None else "NA",
-                round(iti, 3)
+                visual_delay
             ])
 
             print(f"  ✅ Trial {i+1} completed. ITI: {round(iti, 3)}s")
@@ -259,7 +252,7 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, visu
         win.flip()
 
 # 🔷 Function to SOA test
-def run_soa_test(win, participant_number, iti_range=(2, 2.5), soa_values_ms=[0, 50, 100, 150, 200, 300, 400, 450]):
+def run_soa_test(win, participant_number, iti_range=(2, 2.5), soa_values_ms=[-200, -150, -100, -50, 0, 50, 100, 150, 200, 300, 400]):
     """
     Runs an SOA test block with 3 repetitions of each SOA x congruency x color combo,
     fully randomized across all 120 trials. Records only essential trial data.
@@ -323,20 +316,28 @@ def run_soa_test(win, participant_number, iti_range=(2, 2.5), soa_values_ms=[0, 
             win.flip()
             core.wait(0.5)
 
-            # Play audio
-            audio_onset = core.getTime()
-            if beep:
-                beep.play()
-                print(f"🎵 Audio started at: {audio_onset:.3f} sec")
-
-            # Wait SOA before showing visual
-            core.wait(soa_sec)
-
-            if trial["visual"]:
-                circle.draw()
-                win.flip()
-                visual_onset = core.getTime()
-                print(f"🎨 Visual appeared at: {visual_onset:.3f} sec (SOA: {trial['soa']} ms)")
+            if trial["soa"] < 0:
+                # Show visual first
+                if trial["visual"]:
+                    circle.draw()
+                    win.flip()
+                    visual_onset = core.getTime()
+                    print(f"🎨 Visual appeared at: {visual_onset:.3f} sec (SOA: {trial['soa']} ms)")
+                core.wait(abs(soa_sec))  # Wait before playing audio
+                if beep:
+                    beep.play()
+                    print(f"🎵 Audio started at: {core.getTime():.3f} sec")
+            else:
+                # Play audio first
+                if beep:
+                    beep.play()
+                    print(f"🎵 Audio started at: {core.getTime():.3f} sec")
+                core.wait(soa_sec)
+                if trial["visual"]:
+                    circle.draw()
+                    win.flip()
+                    visual_onset = core.getTime()
+                    print(f"🎨 Visual appeared at: {visual_onset:.3f} sec (SOA: {trial['soa']} ms)")
 
             # Start RT recording after visual
             response = None
@@ -419,19 +420,16 @@ def run_practice(win, iti_range, total_trials, trial_types):
                 print("Escape key pressed! Exiting...")
                 win.close()
                 core.quit()
-        
-        print(f"🔹 Practice Trial {i+1}: {trial}")  # Debugging print
 
         if trial["audio"]:
             trial["audio"].stop()  # Stop previous sound
 
-        # Show fixation cross
-        fixation.draw()
-        win.flip()
-        core.wait(0.5)  # Fixation for 500ms
-
         event.clearEvents(eventType='keyboard')
         clock = core.Clock()
+
+        # Stop fixation cross before stimuli are presented
+        fixation.autoDraw = False
+        win.flip()
 
         # Prepare visual stimulus
         if trial["visual"]:
@@ -443,15 +441,12 @@ def run_practice(win, iti_range, total_trials, trial_types):
         # Start timing
         audio_onset_time = core.getTime()
 
-        # Play auditory stimulus immediately
+        # Play auditory stimulus
         if beep:
             beep.play()
             print(f"🎵 Audio started at: {audio_onset_time:.3f} sec")
 
-        # Introduce 300 ms delay before showing visual stimulus
-        core.wait(0.3)
-
-        # Now display the visual stimulus
+        # Display the visual stimulus
         if trial["visual"]:
             circle.draw()
             win.flip()
@@ -496,13 +491,14 @@ def run_practice(win, iti_range, total_trials, trial_types):
 
             feedback_text.draw()
             win.flip()
-            core.wait(0.6)
+            core.wait(0.4)
+            # Start new fixation cross
+            fixation.autoDraw = True
+            win.flip()
 
-        # **ITI should be here, after feedback**
+        # ITI should be here, after feedback
         iti = random.uniform(iti_range[0], iti_range[1])
         core.wait(iti)  # Inter-Trial Interval
-
-        print(f"✅ Practice Trial {i+1} completed. ITI: {round(iti, 3)}s")
 
 # 🔷 Function to Run Experiment Questionnaire
 def run_experiment_questionnaire(win, participant_number, questions, block_num):
@@ -614,9 +610,9 @@ def run_experiment_questionnaire(win, participant_number, questions, block_num):
                     warning_message.text = ""
 
     # Save responses to a per-participant survey CSV
-    data_folder = "AV_Stress_Data"
+    data_folder = "AV_SOA_Data"
     os.makedirs(data_folder, exist_ok=True)
-    survey_filename = os.path.join(data_folder, f"AV_Stress_Survey_{participant_number}.csv")
+    survey_filename = os.path.join(data_folder, f"AV_SOA_Survey_{participant_number}.csv")
     file_exists = os.path.exists(survey_filename)
 
     with open(survey_filename, "a", newline="") as file:
@@ -662,7 +658,7 @@ show_instructions(win, "Now you will be moving on to the real task.\n\n"
 show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
                   "Press the BLUE button\n when you percieve BLUE.", 3)                
 get_ready(win, "Get Ready!\nSection 1 will begin in...")
-run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1, 1.25), total_trials=100, visual_delay=0)
+run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=100, visual_delay=0)
 show_instructions(win, "Great job, you competed Section 1! You will now move on to a brief survey.", 3)
 show_instructions(win, "This survey consists of 15 statements.\n\n"
                   "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n" 
@@ -679,7 +675,7 @@ show_instructions(win, "Like before, you will either SEE a color, HEAR a color, 
 show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
                   "Press the BLUE button\n when you percieve BLUE.", 3)
 get_ready(win, "Get Ready!\nSection 2 will begin in...")                 
-run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1, 1.25), total_trials=100, visual_delay=0.05)
+run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=100, visual_delay=0.05)
 show_instructions(win, "Great job, you completed Section 2! You will now move on to another 15 question survey.", 2)
 show_instructions(win, "Answer based off of your experience in Section 2 ONLY", 2)
 show_instructions(win,  "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
@@ -694,7 +690,7 @@ show_instructions(win, "Like before, you will either SEE a color, HEAR a color, 
 show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
                   "Press the BLUE button\n when you percieve BLUE.", 3)
 get_ready(win, "Get Ready!\nSection 3 will begin in...") 
-run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1, 1.25), total_trials=100, visual_delay=0.1)
+run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=100, visual_delay=0.1)
 show_instructions(win, "Great job, you completed Section 3! You will now move on to another 15 question survey.", 2)
 show_instructions(win, "Answer based off of your experience in Section 3 ONLY", 8)
 show_instructions(win, "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
@@ -709,7 +705,7 @@ show_instructions(win, "Like before, you will either SEE a color, HEAR a color, 
 show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
                   "Press the BLUE button\n when you percieve BLUE.", 3)
 get_ready(win, "Get Ready!\nSection 4 will begin in...") 
-run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1, 1.25), total_trials=100, visual_delay=0.15)
+run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.75, 2), total_trials=100, visual_delay=0.15)
 show_instructions(win, "Great job, you completed Section 3! You will now move on to another 15 question survey.", 2)
 show_instructions(win, "Answer based off of your experience in Section 4 ONLY", 8)
 show_instructions(win, "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
@@ -724,14 +720,14 @@ show_instructions(win, "Like before, you will either SEE a color, HEAR a color, 
 show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
                   "Press the BLUE button\n when you percieve BLUE.", 3)
 get_ready(win, "Get Ready!\nSection 5 will begin in...") 
-run_trials(win, participant_number, csv_filename, block_num=5, iti_range=(1, 1.25), total_trials=100, visual_delay=0.2)
+run_trials(win, participant_number, csv_filename, block_num=5, iti_range=(1.75, 2), total_trials=100, visual_delay=0.2)
 show_instructions(win, "Great job, you completed Section 5! You will now move on to your last 15 question survey.", 2)
 show_instructions(win, "Answer based off of your experience in Section 5 ONLY", 8)
 show_instructions(win, "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
 run_experiment_questionnaire(win, participant_number, block_questions, block_num=5)
 show_instructions(win, "Congratudlations! You have completed the main portion of the experiment.\nYou may now take a brief break...\n\n"
                   "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)"""
-        # block 6
+"""     # block 6
 show_instructions(win, 
     "In this final, brief section of the experiment:\n\n"
     "You'll use the white 'C' and 'I' buttons on the button box to judge whether the sounds and visuals you experience are:\n\n"
@@ -744,21 +740,21 @@ show_instructions(win, "Press the 'C' button if you think the visual and audio o
     "The specific colors don't matter — just focus on the timing,\n"
     "just decide whether the two events felt like they happened together or not.", 10)
 show_instructions(win, "The next screen will show a short countdown to help you prepare —\n"
-    "but remember, you can take your time responding during this block.", 5)
-get_ready(win, "Get Ready!\nFinal block will begin in...")
-run_soa_test(win, participant_number)
-show_instructions(win, "You have now completed the experiment!\n"
-                  "Thank you so much for participating!", 3)
+    "but remember, you can take your time responding during this block.", 5)"""
+#get_ready(win, "Get Ready!\nFinal block will begin in...")
+#run_soa_test(win, participant_number)
+#show_instructions(win, "You have now completed the experiment!\n"
+    #              "Thank you so much for participating!", 3)
 
 # FOR TROUBLE SHOOTING 
 # show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
 #                 "Press the BLUE\n when you percieve BLUE\n\n", 1)
 # get_ready(win, "Get Ready!\nTask will begin in...")      
 #run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1, 1.25), total_trials=40, visual_delay=0.21)
-#run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1, 1.25), total_trials=40, visual_delay=0.04)
-#run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1, 1.25), total_trials=40, visual_delay=0.14)
+#run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=40, visual_delay=0.04)
+run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1, 1.25), total_trials=40, visual_delay=0.14)
 # run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.00, 1.25), total_trials=120, trial_types=["V", "A", "AVC", "AVI"], trial4 = True)
-# run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
+#run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
 # run_experiment_questionnaire(win, participant_number, block_questions, block_num=4)
 
 # 🔶 Close the Experiment
