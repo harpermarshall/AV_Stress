@@ -28,7 +28,7 @@ def get_participant_info():
         participant_number = f"P{int(participant_number):03d}"
         data_folder = "AV_SOA_Data"
         os.makedirs(data_folder, exist_ok=True)
-        csv_filename = os.path.abspath(os.path.join(data_folder, f"AV_SOA_Results_{participant_number}.csv"))
+        csv_filename = os.path.abspath(os.path.join(data_folder, f"AV_Stroop_Results_{participant_number}.csv"))
 
         # Warn if file exists
         if os.path.isfile(csv_filename):
@@ -106,6 +106,130 @@ def get_ready(win, text):
     # Clear the screen after countdown
     win.flip()
 
+# 🔷 Function to Run Practice
+def run_practice(win, iti_range, total_trials, trial_types):
+    response_keys = ["r", "b"]  # Response keys
+    fixation = visual.TextStim(win, text="+", color="white", height=40)
+
+    # Preload audio files
+    audio_files = {
+        "red": "/Users/harpermarshall/Desktop/Project 1/sounds/red.mp3",
+        "blue": "/Users/harpermarshall/Desktop/Project 1/sounds/blue.mp3"
+    }
+    preloaded_sounds = {color: sound.Sound(path) if os.path.exists(path) else None for color, path in audio_files.items()}
+
+    # Generate trials
+    trials = []
+    total_trial_types = len(trial_types)
+    trials_per_type = total_trials // total_trial_types  # // rounds down to nearest int
+
+    for trial_type in trial_types:
+        colors = ["red"] * (trials_per_type // 2) + ["blue"] * (trials_per_type // 2)
+        color_iterator = iter(colors)  # Assign colors in order
+
+        for _ in range(trials_per_type):
+            if trial_type == "V":
+                color = next(color_iterator)
+                audio = None
+            elif trial_type == "A":
+                color = None
+                audio = preloaded_sounds[next(color_iterator)]
+            elif trial_type == "AVC":
+                color = next(color_iterator)
+                audio = preloaded_sounds[color]
+            elif trial_type == "AVI":
+                color = next(color_iterator)
+                incongruent_color = "red" if color == "blue" else "blue"
+                audio = preloaded_sounds[incongruent_color]
+            trials.append({"type": trial_type, "visual": color, "audio": audio})
+
+    # **Shuffle trials ONCE before running**
+    random.shuffle(trials)
+
+    # Run trials
+    for i, trial in enumerate(trials):
+        if 'escape' in event.getKeys():
+                print("Escape key pressed! Exiting...")
+                win.close()
+                core.quit()
+
+        if trial["audio"]:
+            trial["audio"].stop()  # Stop previous sound
+
+        event.clearEvents(eventType='keyboard')
+        clock = core.Clock()
+
+        # Stop fixation cross before stimuli are presented
+        fixation.autoDraw = False
+        win.flip()
+
+        # Prepare visual stimulus
+        if trial["visual"]:
+            circle = visual.Circle(win, radius=75, fillColor=trial["visual"], lineColor=None)
+
+        # Prepare auditory stimulus
+        beep = trial["audio"]
+
+        # Start timing
+        audio_onset_time = core.getTime()
+
+        # Play auditory stimulus
+        if beep:
+            beep.play()
+            print(f"🎵 Audio started at: {audio_onset_time:.3f} sec")
+
+        # Display the visual stimulus
+        if trial["visual"]:
+            circle.draw()
+            win.flip()
+            visual_onset_time = core.getTime()  # Get actual visual onset time
+            print(f"🎨 Visual stimulus appeared at: {visual_onset_time:.3f} sec")
+
+        # Collect response safely
+        clock = core.Clock()
+        response = None
+        key, rt, correct = "No Response", None, None
+        start_time = clock.getTime()
+
+        while response is None and clock.getTime() - start_time < 0.850:
+            keys = event.getKeys(timeStamped=clock)
+            for k in keys:
+                key_name, key_rt = k
+                if key_name.lower() in response_keys:
+                    response = (key_name.lower(), key_rt)
+                    break
+                elif key_name == "escape":
+                    print("Escape key pressed! Exiting...")
+                    win.close()
+                    core.quit()
+            core.wait(0.01)
+
+        # Evaluate response
+        if response is not None:
+            key, rt = response
+
+        # Determine correctness
+        if trial["type"] in ["V", "A", "AVC"]:
+            expected_response = "b" if (trial["visual"] == "blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "r"
+            correct = key == expected_response
+
+            # Provide feedback
+            if rt is None:
+                feedback_text = visual.TextStim(win, text="Too Slow!", color="red", height=40)
+            elif correct:
+                feedback_text = visual.TextStim(win, text="✓ Correct", color="green", height=40)
+            else:
+                feedback_text = visual.TextStim(win, text="✗ Incorrect", color="red", height=40)
+
+            feedback_text.draw()
+            win.flip()
+            core.wait(0.4)
+            # Start new fixation cross with ITI wait
+            fixation.draw()
+            win.flip()
+            core.wait(random.uniform(*iti_range))
+
+# 🔷 Function to Run Trials
 def run_trials(win, participant_number, csv_filename, block_num, iti_range, visual_delay, total_trials):
 
     response_keys = ["r", "b"]
@@ -244,14 +368,12 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, visu
                 visual_delay
             ])
 
-            print(f"  ✅ Trial {i+1} completed. ITI: {round(iti, 3)}s")
-
             core.wait(iti)
 
         fixation.autoDraw = False
         win.flip()
 
-# 🔷 Function to SOA test
+# 🔷 Function for SOA Test
 def run_soa_test(win, participant_number, iti_range=(2, 2.5), soa_values_ms=[-200, -150, -100, -50, 0, 50, 100, 150, 200, 300, 400]):
     """
     Runs an SOA test block with 3 repetitions of each SOA x congruency x color combo,
@@ -266,9 +388,9 @@ def run_soa_test(win, participant_number, iti_range=(2, 2.5), soa_values_ms=[-20
     preloaded_sounds = {color: sound.Sound(path) if os.path.exists(path) else None for color, path in audio_files.items()}
 
     # Save to SOA-specific file
-    data_folder = "AV_Stress_Data"
+    data_folder = "AV_SOA_Data"
     os.makedirs(data_folder, exist_ok=True)
-    soa_filename = os.path.join(data_folder, f"AV_Stress_SOA_{participant_number}.csv")
+    soa_filename = os.path.join(data_folder, f"AV_SOA_Results_{participant_number}.csv")
     file_exists = os.path.exists(soa_filename)
 
     with open(soa_filename, "a", newline="") as file:
@@ -310,11 +432,6 @@ def run_soa_test(win, participant_number, iti_range=(2, 2.5), soa_values_ms=[-20
 
             beep = trial["audio"]
             soa_sec = trial["soa"] / 1000.0
-
-            # Show fixation
-            fixation.draw()
-            win.flip()
-            core.wait(0.5)
 
             if trial["soa"] < 0:
                 # Show visual first
@@ -369,136 +486,13 @@ def run_soa_test(win, participant_number, iti_range=(2, 2.5), soa_values_ms=[-20
             ])
 
             print(f"  ✅ SOA Trial {i+1} complete.")
+
+            # Show fixation during ITI
+            fixation.draw()
+            win.flip()
             core.wait(random.uniform(*iti_range))
-
-        fixation.autoDraw = False
-        win.flip()
-
-# 🔷 Function to Run Practice
-def run_practice(win, iti_range, total_trials, trial_types):
-    response_keys = ["r", "b"]  # Response keys
-    fixation = visual.TextStim(win, text="+", color="white", height=40)
-
-    # Preload audio files
-    audio_files = {
-        "red": "/Users/harpermarshall/Desktop/Project 1/sounds/red.mp3",
-        "blue": "/Users/harpermarshall/Desktop/Project 1/sounds/blue.mp3"
-    }
-    preloaded_sounds = {color: sound.Sound(path) if os.path.exists(path) else None for color, path in audio_files.items()}
-
-    # Generate trials
-    trials = []
-    total_trial_types = len(trial_types)
-    trials_per_type = total_trials // total_trial_types  # // rounds down to nearest int
-
-    for trial_type in trial_types:
-        colors = ["red"] * (trials_per_type // 2) + ["blue"] * (trials_per_type // 2)
-        color_iterator = iter(colors)  # Assign colors in order
-
-        for _ in range(trials_per_type):
-            if trial_type == "V":
-                color = next(color_iterator)
-                audio = None
-            elif trial_type == "A":
-                color = None
-                audio = preloaded_sounds[next(color_iterator)]
-            elif trial_type == "AVC":
-                color = next(color_iterator)
-                audio = preloaded_sounds[color]
-            elif trial_type == "AVI":
-                color = next(color_iterator)
-                incongruent_color = "red" if color == "blue" else "blue"
-                audio = preloaded_sounds[incongruent_color]
-            trials.append({"type": trial_type, "visual": color, "audio": audio})
-
-    # **Shuffle trials ONCE before running**
-    random.shuffle(trials)
-
-    # Run trials
-    for i, trial in enumerate(trials):
-        if 'escape' in event.getKeys():
-                print("Escape key pressed! Exiting...")
-                win.close()
-                core.quit()
-
-        if trial["audio"]:
-            trial["audio"].stop()  # Stop previous sound
-
-        event.clearEvents(eventType='keyboard')
-        clock = core.Clock()
-
-        # Stop fixation cross before stimuli are presented
-        fixation.autoDraw = False
-        win.flip()
-
-        # Prepare visual stimulus
-        if trial["visual"]:
-            circle = visual.Circle(win, radius=75, fillColor=trial["visual"], lineColor=None)
-
-        # Prepare auditory stimulus
-        beep = trial["audio"]
-
-        # Start timing
-        audio_onset_time = core.getTime()
-
-        # Play auditory stimulus
-        if beep:
-            beep.play()
-            print(f"🎵 Audio started at: {audio_onset_time:.3f} sec")
-
-        # Display the visual stimulus
-        if trial["visual"]:
-            circle.draw()
-            win.flip()
-            visual_onset_time = core.getTime()  # Get actual visual onset time
-            print(f"🎨 Visual stimulus appeared at: {visual_onset_time:.3f} sec")
-
-        # Collect response safely
-        clock = core.Clock()
-        response = None
-        key, rt, correct = "No Response", None, None
-        start_time = clock.getTime()
-
-        while response is None and clock.getTime() - start_time < 0.850:
-            keys = event.getKeys(timeStamped=clock)
-            for k in keys:
-                key_name, key_rt = k
-                if key_name.lower() in response_keys:
-                    response = (key_name.lower(), key_rt)
-                    break
-                elif key_name == "escape":
-                    print("Escape key pressed! Exiting...")
-                    win.close()
-                    core.quit()
-            core.wait(0.01)
-
-        # Evaluate response
-        if response is not None:
-            key, rt = response
-
-        # Determine correctness
-        if trial["type"] in ["V", "A", "AVC"]:
-            expected_response = "b" if (trial["visual"] == "blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "r"
-            correct = key == expected_response
-
-            # Provide feedback
-            if rt is None:
-                feedback_text = visual.TextStim(win, text="Too Slow!", color="red", height=40)
-            elif correct:
-                feedback_text = visual.TextStim(win, text="✓ Correct", color="green", height=40)
-            else:
-                feedback_text = visual.TextStim(win, text="✗ Incorrect", color="red", height=40)
-
-            feedback_text.draw()
-            win.flip()
-            core.wait(0.4)
-            # Start new fixation cross
-            fixation.autoDraw = True
-            win.flip()
-
-        # ITI should be here, after feedback
-        iti = random.uniform(iti_range[0], iti_range[1])
-        core.wait(iti)  # Inter-Trial Interval
+    fixation.autoDraw = False
+    win.flip()
 
 # 🔷 Function to Run Experiment Questionnaire
 def run_experiment_questionnaire(win, participant_number, questions, block_num):
@@ -612,7 +606,7 @@ def run_experiment_questionnaire(win, participant_number, questions, block_num):
     # Save responses to a per-participant survey CSV
     data_folder = "AV_SOA_Data"
     os.makedirs(data_folder, exist_ok=True)
-    survey_filename = os.path.join(data_folder, f"AV_SOA_Survey_{participant_number}.csv")
+    survey_filename = os.path.join(data_folder, f"AV_Strategy_Survey_{participant_number}.csv")
     file_exists = os.path.exists(survey_filename)
 
     with open(survey_filename, "a", newline="") as file:
@@ -638,50 +632,85 @@ participant_number, csv_filename = get_participant_info()
 win = visual.Window(fullscr=True, color="black", units="pix")
 
 """# 🔶 Practice
-show_instructions(win, "This experiment will be broken up into 5 main sections with a short survey after each section.\n\n"
-                  "You will have the option to take a brief break after each survey.", 8)
-show_instructions(win, "In the main portion of this experiment, you will either:\n\nSEE a colored circle,\nHEAR the name of a color,\nor BOTH.\n\n"
-                  "Your task is to press the button that matches the perceived color.\n\n"
-                  "In between trials, keep your eyes on the fixation cross in the center of the screen", 9)
-show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
-                  "Press the BLUE button\n when you percieve BLUE.\n\n"
-                  "You can practice selecting the correct color in this short practice section.", 8)
+show_instructions(win, 
+    "This experiment will be broken up into 5 main sections with a short survey after each section.\n\n"
+    "You will have the option to take a brief break after each survey.", 
+    8)
+show_instructions(win, 
+    "In the main portion of this experiment, you will either:\n\nSEE a colored circle,\nHEAR the name of a color,\nor BOTH.\n\n"
+    "Your task is to press the button that matches the perceived color.\n\n"
+    "In between trials, keep your eyes on the fixation cross in the center of the screen", 
+    9)
+show_instructions(win,
+    "Press the RED button\n when you percieve RED.\n\n"
+    "Press the BLUE button\n when you percieve BLUE.\n\n"
+    "You can practice selecting the correct color in this short practice section.", 
+    8)
 get_ready(win, "Get Ready!\nPractice will begin in...") 
-run_practice(win, iti_range=(1, 1.25), total_trials=12, trial_types=["V", "A"])
-show_instructions(win, "Great job!\n\nIn the real task, you will not be told if your responses are correct or incorrect like you saw in the practice.", 8)
+run_practice(win, iti_range=(1, 1.25), total_trials=8, trial_types=["V", "A"])
+show_instructions(win, 
+    "Great job!\n\n"
+    "In the real task, you will not be told if your responses are correct or incorrect like you saw in the practice.", 
+    8)
 
 # 🔶 RUN TRIALS
         # block 1
-show_instructions(win, "Now you will be moving on to the real task.\n\n"
-                  "Just like the practice, you will have less than a second to respond after the color is presented.\n\n"
-                  "Respond as quickly and accurately as possible.", 6)
-show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
-                  "Press the BLUE button\n when you percieve BLUE.", 3)                
+show_instructions(win, 
+    "Now you will be moving on to the real task.\n\n"
+    "Just like the practice, you will have less than a second to respond after the color is presented.\n\n"
+    "Respond as quickly and accurately as possible.", 
+    6)
+show_instructions(win, 
+    "Press the RED button\n when you percieve RED.\n\n"
+    "Press the BLUE button\n when you percieve BLUE.", 
+    3)                
 get_ready(win, "Get Ready!\nSection 1 will begin in...")
-run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=100, visual_delay=0)
-show_instructions(win, "Great job, you competed Section 1! You will now move on to a brief survey.", 3)
-show_instructions(win, "This survey consists of 15 statements.\n\n"
-                  "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n" 
-                  "Answer based off of your experience in Section 1 ONLY", 8)
-show_instructions(win,  "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
+run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=80, visual_delay=0)
+show_instructions(win, 
+    "Great job, you competed Section 1! You will now move on to a brief survey.", 
+    3)
+show_instructions(win, 
+    "This survey consists of 15 statements.\n\n"
+    "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n" 
+    "Answer based off of your experience in Section 1 ONLY", 
+    8)
+show_instructions(win, 
+    "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
+    4)
 run_experiment_questionnaire(win, participant_number, block_questions, block_num=1)
-show_instructions(win, "You may now take a brief break...\n\n"
-                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)
+show_instructions(win, 
+    "You may now take a brief break...\n\n"
+    "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
+    7)
+
         # block 2
-show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
-                  "Your task is to press the button that matches the perceived color.\n\n"
-                  "You will have less than a second to respond after the color is presented.\n\n"
-                  "Respond as quickly and accurately as possible.", 6)
-show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
-                  "Press the BLUE button\n when you percieve BLUE.", 3)
+show_instructions(win, 
+    "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
+    "Your task is to press the button that matches the perceived color.\n\n"
+    "You will have less than a second to respond after the color is presented.\n\n"
+    "Respond as quickly and accurately as possible.", 
+    6)
+show_instructions(win,
+    "Press the RED button\n when you percieve RED.\n\n"
+    "Press the BLUE button\n when you percieve BLUE.", 
+    3)
 get_ready(win, "Get Ready!\nSection 2 will begin in...")                 
-run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=100, visual_delay=0.05)
-show_instructions(win, "Great job, you completed Section 2! You will now move on to another 15 question survey.", 2)
-show_instructions(win, "Answer based off of your experience in Section 2 ONLY", 2)
-show_instructions(win,  "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
+run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=80, visual_delay=0.05)
+show_instructions(win, 
+    "Great job, you completed Section 2! You will now move on to another 15 question survey.", 
+    2)
+show_instructions(win, 
+    "Answer based off of your experience in Section 2 ONLY", 
+    2)
+show_instructions(win,  
+    "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
+    4)
 run_experiment_questionnaire(win, participant_number, block_questions, block_num=2)
-show_instructions(win, "You may now take a brief break...\n\n"
-                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)
+show_instructions(win, 
+    "You may now take a brief break...\n\n"
+    "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
+    7)
+
         # block 3
 show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
                   "Your task is to press the button that matches the perceived color.\n\n"
@@ -690,71 +719,118 @@ show_instructions(win, "Like before, you will either SEE a color, HEAR a color, 
 show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
                   "Press the BLUE button\n when you percieve BLUE.", 3)
 get_ready(win, "Get Ready!\nSection 3 will begin in...") 
-run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=100, visual_delay=0.1)
-show_instructions(win, "Great job, you completed Section 3! You will now move on to another 15 question survey.", 2)
-show_instructions(win, "Answer based off of your experience in Section 3 ONLY", 8)
-show_instructions(win, "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
+run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=80, visual_delay=0.1)
+show_instructions(win, 
+    "Great job, you completed Section 3! You will now move on to another 15 question survey.", 
+    2)
+show_instructions(win, 
+    "Answer based off of your experience in Section 3 ONLY", 
+    8)
+show_instructions(win, 
+    "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
+    4)
 run_experiment_questionnaire(win, participant_number, block_questions, block_num=3)
-show_instructions(win, "You may now take a brief break...\n\n"
-                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)
+show_instructions(win, 
+    "You may now take a brief break...\n\n"
+    "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
+    7)
         # block 4
-show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
-                  "Your task is to press the button that matches the perceived color.\n\n"
-                  "You will have less than a second to respond after the color is presented.\n\n"
-                  "Respond as quickly and accurately as possible.", 6)
-show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
-                  "Press the BLUE button\n when you percieve BLUE.", 3)
+show_instructions(win, 
+    "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
+    "Your task is to press the button that matches the perceived color.\n\n"
+    "You will have less than a second to respond after the color is presented.\n\n"
+    "Respond as quickly and accurately as possible.", 
+    6)
+show_instructions(win,
+    "Press the RED button\n when you percieve RED.\n\n"
+    "Press the BLUE button\n when you percieve BLUE.", 
+    3)
 get_ready(win, "Get Ready!\nSection 4 will begin in...") 
-run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.75, 2), total_trials=100, visual_delay=0.15)
-show_instructions(win, "Great job, you completed Section 3! You will now move on to another 15 question survey.", 2)
-show_instructions(win, "Answer based off of your experience in Section 4 ONLY", 8)
-show_instructions(win, "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
+run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.75, 2), total_trials=80, visual_delay=0.15)
+show_instructions(win, 
+    "Great job, you completed Section 3! You will now move on to another 15 question survey.", 
+    2)
+show_instructions(win, 
+    "Answer based off of your experience in Section 4 ONLY", 
+    8)
+show_instructions(win, 
+    "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
+    4)
 run_experiment_questionnaire(win, participant_number, block_questions, block_num=4)
-show_instructions(win, "You may now take a brief break...\n\n"
-                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)
+show_instructions(win, 
+    "You may now take a brief break...\n\n"
+    "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
+    7)
+
         # block 5
-show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
-                  "Your task is to press the button that matches the perceived color.\n\n"
-                  "You will have less than a second to respond after the color is presented.\n\n"
-                  "Respond as quickly and accurately as possible.", 6)
-show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
-                  "Press the BLUE button\n when you percieve BLUE.", 3)
+show_instructions(win, 
+    "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
+    "Your task is to press the button that matches the perceived color.\n\n"
+    "You will have less than a second to respond after the color is presented.\n\n"
+    "Respond as quickly and accurately as possible.", 
+    6)
+show_instructions(win,
+    "Press the RED button\n when you percieve RED.\n\n"
+    "Press the BLUE button\n when you percieve BLUE.", 
+    3)
 get_ready(win, "Get Ready!\nSection 5 will begin in...") 
-run_trials(win, participant_number, csv_filename, block_num=5, iti_range=(1.75, 2), total_trials=100, visual_delay=0.2)
-show_instructions(win, "Great job, you completed Section 5! You will now move on to your last 15 question survey.", 2)
-show_instructions(win, "Answer based off of your experience in Section 5 ONLY", 8)
-show_instructions(win, "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
+run_trials(win, participant_number, csv_filename, block_num=5, iti_range=(1.75, 2), total_trials=80, visual_delay=0.2)
+show_instructions(win, 
+    "Great job, you completed Section 5! You will now move on to your last 15 question survey.", 
+    2)
+show_instructions(win, 
+    "Answer based off of your experience in Section 5 ONLY", 
+    8)
+show_instructions(win, 
+    "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 4)
 run_experiment_questionnaire(win, participant_number, block_questions, block_num=5)
-show_instructions(win, "Congratudlations! You have completed the main portion of the experiment.\nYou may now take a brief break...\n\n"
-                  "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 7)"""
+show_instructions(win, 
+    "Congratudlations! You have completed the main portion of the experiment.\nYou may now take a brief break...\n\n"
+    "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
+    7)"""
+
 """     # block 6
 show_instructions(win, 
-    "In this final, brief section of the experiment:\n\n"
-    "You'll use the white 'C' and 'I' buttons on the button box to judge whether the sounds and visuals you experience are:\n\n"
-    "CONGRUENT (C) — happening at the same time\n"
-    "INCONGRUENT (I) — happening at different times\n\n"
-    "Unlike before, you can take as much time as you need to respond — this part is NOT timed.", 
+    "In this final section of the experiment, your task is to judge the TIMING between what you SEE and what you HEAR.\n\n"
+    "Use the white 'C' and 'I' buttons on the button box to make your response:\n\n"
+    "• Press 'C' if you think the visual and audio happened at the SAME TIME (CONGRUENT).\n"
+    "• Press 'I' if you think they happened at DIFFERENT TIMES (INCONGRUENT).\n\n"
+    "There is NO TIME LIMIT — take as long as you need to respond.", 
     13)
-show_instructions(win, "Press the 'C' button if you think the visual and audio occurred at the\nSAME TIME.\n\n"
-    "Press the 'I' button if you think the visual and audio occurred at\nDIFFERENT TIMES.\n\n"
-    "The specific colors don't matter — just focus on the timing,\n"
-    "just decide whether the two events felt like they happened together or not.", 10)
-show_instructions(win, "The next screen will show a short countdown to help you prepare —\n"
-    "but remember, you can take your time responding during this block.", 5)"""
-#get_ready(win, "Get Ready!\nFinal block will begin in...")
-#run_soa_test(win, participant_number)
-#show_instructions(win, "You have now completed the experiment!\n"
-    #              "Thank you so much for participating!", 3)
+show_instructions(win, 
+    "This time, you will ALWAYS experience both HEARING the name of a color and SEEING a color.\n\n"
+    "Sometimes, the colors will match (e.g., see blue and hear 'blue').\n"
+    "Sometimes, they will not (e.g., see red and hear 'blue').\n\n"
+    "IGNORE THE COLOR ITSELF — focus only on whether the sound and visual OCCUR TOGETHER OR NOT.", 
+    11)
+show_instructions(win, 
+    "To recap:\n\n"
+    "• Press 'C' if the visual and sound felt like they happened together (CONGRUENT).\n"
+    "• Press 'I' if they felt like one cue came before the other (INCONGRUENT).\n\n"
+    "Color doesn't matter — only TIMING does.", 
+    10)
+show_instructions(win, 
+    "The next screen will show a short countdown to help you get ready.\n\n"
+    "Remember, you can respond at your own pace in this section."
+    "After you respond, the next round will occur after 2 seconds," 
+    5)
+get_ready(win, "Get Ready!\nFinal block will begin in...")
+run_soa_test(win, participant_number)
+show_instructions(win, 
+    "You have now completed the experiment!\n"
+    "Thank you so much for participating!", 
+    3)"""  
 
 # FOR TROUBLE SHOOTING 
 # show_instructions(win,"Press the RED button\n when you percieve RED\n\n"
 #                 "Press the BLUE\n when you percieve BLUE\n\n", 1)
 # get_ready(win, "Get Ready!\nTask will begin in...")      
-#run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1, 1.25), total_trials=40, visual_delay=0.21)
+#run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1, 1.25), total_trials=10, visual_delay=0.21)
 #run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=40, visual_delay=0.04)
-run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1, 1.25), total_trials=40, visual_delay=0.14)
+#run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1, 1.25), total_trials=40, visual_delay=0.14)
 # run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.00, 1.25), total_trials=120, trial_types=["V", "A", "AVC", "AVI"], trial4 = True)
 #run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
+#run_soa_test(win, participant_number)
 # run_experiment_questionnaire(win, participant_number, block_questions, block_num=4)
 
 # 🔶 Close the Experiment
