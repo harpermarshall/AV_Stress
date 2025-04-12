@@ -401,7 +401,7 @@ def run_soa_test(win, participant_number, iti_range=(2,2.01), soa_values_ms=[-20
         trials = []
         trial_types = ["AVC"]
         colors = ["red", "blue"]
-        reps = 4  # repeat every combination 4 times
+        reps = 2  # repeat every combination 2 times
 
         for _ in range(reps):
             for soa in soa_values_ms:
@@ -453,13 +453,25 @@ def run_soa_test(win, participant_number, iti_range=(2,2.01), soa_values_ms=[-20
                     visual_onset = core.getTime()
                     print(f"🎨 Visual appeared at: {visual_onset:.3f} sec (SOA: {trial['soa']} ms)")
 
-            # Start RT recording after visual
+            # Start RT recording after visual with enhanced key processing
             response = None
             while response is None:
-                keys = event.getKeys()
+                try:
+                    raw_keys = event.getKeys()
+                    keys = []
+                    for k in raw_keys:
+                        try:
+                            keys.append(str(k[0]) if isinstance(k, tuple) else str(k))
+                        except Exception as inner_e:
+                            print("Nested key conversion error during SOA test:", inner_e, k)
+                except Exception as e:
+                    print("Top-level key processing error during SOA test:", e)
+                    keys = []
+
                 for k in keys:
                     if k in response_keys:
                         response = k
+                        break
                     elif k == "escape":
                         print("Escape key pressed! Exiting...")
                         win.close()
@@ -481,6 +493,8 @@ def run_soa_test(win, participant_number, iti_range=(2,2.01), soa_values_ms=[-20
                 trial["soa"],
                 key
             ])
+
+            print(f"  ✅ SOA Trial {i+1} complete.")
 
             # Show fixation during ITI
             fixation.draw()
@@ -830,7 +844,7 @@ def run_full_experiment(win, participant_number, csv_filename):
         3)  
 
 # 🔶 RUN EXPERIMENT
-run_full_experiment(win, participant_number, csv_filename)
+#run_full_experiment(win, participant_number, csv_filename)
 
 # DUMMY MODE -----------------------------------------------------------------------------------------------------------------------------------------------------------
 #get_ready(win, "Get Ready!\nTask will begin in...")
@@ -840,7 +854,7 @@ run_full_experiment(win, participant_number, csv_filename)
 #run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1, 1.25), total_trials=20, visual_delay=0.1)
 #run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1, 1.25), total_trials=20, visual_delay=0.15)
 #run_trials(win, participant_number, csv_filename, block_num=5, iti_range=(1, 1.25), total_trials=20, visual_delay=0.20)
-#run_soa_test(win, participant_number)
+run_soa_test(win, participant_number)
 #run_experiment_questionnaire(win, participant_number, block_questions, block_num=1)
 
 # 🔶 Close the Experiment
