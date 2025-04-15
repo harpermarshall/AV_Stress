@@ -7,10 +7,6 @@ import os
 
 # 🔷 Function to Get Participant Info & Handle File Overwriting
 def get_participant_info():
-    """
-    Asks for participant information, prevents overwriting files, 
-    and returns the participant number and CSV filename.
-    """
     while True:
         dlg = gui.Dlg(title="Participant Information")
         dlg.addField("Participant Number:")
@@ -28,26 +24,22 @@ def get_participant_info():
         participant_number = f"P{int(participant_number):03d}"
         base_data_folder = "AV_SOA_Data"
         participant_folder = os.path.join(base_data_folder, participant_number)
+
+        # 🚨 Check if folder exists
+        warning_text = ""
+        if os.path.exists(participant_folder):
+            warning_text = f"\n\n⚠️ WARNING: Folder for Participant {participant_number} already exists!\nIt may contain previously saved data."
+
         os.makedirs(participant_folder, exist_ok=True)
-        csv_filename = os.path.abspath(os.path.join(participant_folder, f"AV_Stroop_Results_{participant_number}.csv"))
 
-        # Warn if file exists
-        if os.path.isfile(csv_filename):
-            overwrite_warning = gui.Dlg(title="⚠️ WARNING: File Exists!")
-            overwrite_warning.addText(f"File for Participant {participant_number} already exists:\n📂 {csv_filename}")
-            overwrite_warning.addField("Confirm Overwrite", choices=["No, enter new number", "Yes, overwrite"])
-            overwrite_warning.show()
-            if overwrite_warning.data[0] == "No, enter new number":
-                continue  # Ask for a new number
-
-        # Final confirmation
         confirm_dlg = gui.Dlg(title="Confirm Participant Info")
-        confirm_dlg.addText(f"Is this correct?\n📂 {csv_filename}")
+        confirm_dlg.addText(f"Is this correct?\n📂 Folder: {participant_folder}{warning_text}")
         confirm_dlg.addField("Confirm", choices=["Yes", "No"])
         confirm_dlg.show()
+
         if confirm_dlg.data[0] == "Yes":
-            print(f"\n✅ File will be saved as: {csv_filename}\n")
-            return participant_number, csv_filename
+            print(f"\n✅ Data will be saved in: {participant_folder}\n")
+            return participant_number
         else:
             print("\nRe-entering participant number...\n")
 
@@ -231,7 +223,12 @@ def run_practice(win, iti_range, total_trials, trial_types):
             core.wait(random.uniform(*iti_range))
 
 # 🔷 Function to Run Trials
-def run_trials(win, participant_number, csv_filename, block_num, iti_range, visual_delay, total_trials):
+def run_trials(win, participant_number, block_num, iti_range, visual_delay, total_trials):
+
+    base_data_folder = "AV_SOA_Data"
+    participant_folder = os.path.join(base_data_folder, participant_number)
+    os.makedirs(participant_folder, exist_ok=True)
+    csv_filename = os.path.join(participant_folder, f"AV_Trials_Results_{participant_number}.csv")
 
     response_keys = ["r", "b"]
     fixation = visual.TextStim(win, text="+", color="white", height=40)
@@ -390,6 +387,8 @@ def run_soa_test(win, participant_number, iti_range=(1.9,2.1), soa_values_ms=[-2
     preloaded_sounds = {color: sound.Sound(path) if os.path.exists(path) else None for color, path in audio_files.items()}
 
     # Save to SOA-specific file
+    if isinstance(participant_number, int):
+        participant_number = f"P{int(participant_number):03d}"
     base_data_folder = "AV_SOA_Data"
     participant_folder = os.path.join(base_data_folder, participant_number)
     os.makedirs(participant_folder, exist_ok=True)
@@ -637,15 +636,15 @@ block_questions = [
     "5. I do not feel like I had a specific strategy during this section",
 ]
 
-# 🔶 Get Participant Info
-#participant_number, csv_filename = get_participant_info()
-
-# 🔶 Initialize PsychoPy Window
-win = visual.Window(fullscr=True, color="black", units="pix")
-
 # 🔷 Function to Run Experiment ----------------------------------------------------------------------------------------------------------------------------------------
-def run_full_experiment(win, participant_number, csv_filename):
+def run_full_experiment():
     
+    # 🔶 Get Participant Info
+    participant_number = get_participant_info()
+
+    # 🔶 Initialize PsychoPy Window
+    win = visual.Window(fullscr=True, color="black", units="pix")
+
     # SOA Test 
     show_instructions(win, 
         "Before we begin the main task, you'll complete a short section where you'll judge the TIMING between what you SEE and what you HEAR.",
@@ -846,9 +845,19 @@ def run_full_experiment(win, participant_number, csv_filename):
         "You have now completed the experiment!\n"
         "Thank you so much for participating!", 
         3)  
+    
+    # 🔶 Close the Experiment
+    win.close()
+    core.quit()
 
 # 🔷 Function to Run Trials Only ----------------------------------------------------------------------------------------------------------------------------------------
-def run_trials_only(win, participant_number, csv_filename):
+def run_trials_only():
+
+    # 🔶 Get Participant Info
+    participant_number = get_participant_info()
+
+    # 🔶 Initialize PsychoPy Window
+    win = visual.Window(fullscr=True, color="black", units="pix")
 
     # Randomize visual delays for blocks 1–5
     visual_delays = [0, 0.05, 0.1, 0.15, 0.2]
@@ -999,24 +1008,26 @@ def run_trials_only(win, participant_number, csv_filename):
         "Thank you so much for participating!", 
         3)  
     
-# 🔶 RUN EXPERIMENT
-#run_full_experiment(win, participant_number, csv_filename)
+    # 🔶 Close the Experiment
+    win.close()
+    core.quit()
 
 # 🔶 RUN EXPERIMENT
-#run_trials_only(win, participant_number, csv_filename)
+run_full_experiment()
+
+# 🔶 RUN EXPERIMENT
+#run_trials_only()
 
 # DUMMY MODE -----------------------------------------------------------------------------------------------------------------------------------------------------------
-#get_ready(win, "Get Ready!\nTask will begin in...")
-#run_practice(win, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A"])
-#run_trials(win, 999, os.path.abspath(os.path.join("AV_SOA_Data", f"AV_Stroop_Results_P{999}.csv")), block_num=1, iti_range=(1, 1.25), total_trials=5, visual_delay=0)
-run_trials(win, 999, os.path.abspath(os.path.join("AV_SOA_Data", f"AV_Stroop_Results_P{999}.csv")), block_num=2, iti_range=(1, 1.25), total_trials=5, visual_delay=0.05)
-#run_trials(win, 999, os.path.abspath(os.path.join("AV_SOA_Data", f"AV_Stroop_Results_P{999}.csv")), block_num=3, iti_range=(1, 1.25), total_trials=5, visual_delay=0.1)
-#run_trials(win, 999, os.path.abspath(os.path.join("AV_SOA_Data", f"AV_Stroop_Results_P{999}.csv")), block_num=4, iti_range=(1, 1.25), total_trials=5, visual_delay=0.15)
-#run_trials(win, 999, os.path.abspath(os.path.join("AV_SOA_Data", f"AV_Stroop_Results_P{999}.csv")), block_num=5, iti_range=(1, 1.25), total_trials=5, visual_delay=0.20)
-run_soa_test(win, 999)
-run_experiment_questionnaire(win, 999, block_questions, block_num=1)
-
-# 🔶 Close the Experiment
+"""win = visual.Window(fullscr=True, color="black", units="pix")
+get_ready(win, "Get Ready!\nTask will begin in...")
+run_practice(win, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A"])
+#run_trials(win, "P999", block_num=1, iti_range=(1, 1.25), total_trials=5, visual_delay=0)
+#run_trials(win, "P999", block_num=2, iti_range=(1, 1.25), total_trials=5, visual_delay=0.05)
+#run_trials(win, "P999", block_num=3, iti_range=(1, 1.25), total_trials=5, visual_delay=0.1)
+#run_trials(win, "P999", block_num=4, iti_range=(1, 1.25), total_trials=5, visual_delay=0.15)
+#run_trials(win, "P999", block_num=5, iti_range=(1, 1.25), total_trials=5, visual_delay=0.20)
+run_soa_test(win, "P999")
+run_experiment_questionnaire(win, "P999", block_questions, block_num=1)
 win.close()
-core.quit()
-
+core.quit()"""
