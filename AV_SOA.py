@@ -368,13 +368,16 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, visu
                 visual_delay
             ])
 
-            core.wait(iti)
+            wait_clock = core.Clock()
+            while wait_clock.getTime() < iti:
+                win.flip()
+                core.wait(0.01)
 
         fixation.autoDraw = False
         win.flip()
 
 # 🔷 Function for SOA Test
-def run_soa_test(win, participant_number, iti_range=(2,2.01), soa_values_ms=[-200, -150, -100, -50, 0, 50, 100, 150, 200, 300, 400]):
+def run_soa_test(win, participant_number, iti_range=(1.9,2.1), soa_values_ms=[-200, -150, -100, -50, 0, 50, 100, 150, 200, 300, 400]):
     """
     Runs an SOA test block with 3 repetitions of each SOA x congruency x color combo,
     fully randomized across all 120 trials. Records only essential trial data.
@@ -632,15 +635,15 @@ block_questions = [
     "5. I do not feel like I had a specific strategy during this section",
 ]
 
-# 🔶 Get Participant Info
-participant_number, csv_filename = get_participant_info()
-
-# 🔶 Initialize PsychoPy Window
-win = visual.Window(fullscr=True, color="black", units="pix")
-
 # 🔷 Function to Run Experiment ----------------------------------------------------------------------------------------------------------------------------------------
 def run_full_experiment(win, participant_number, csv_filename):
     
+    # 🔶 Get Participant Info
+    participant_number, csv_filename = get_participant_info()
+
+    # 🔶 Initialize PsychoPy Window
+    win = visual.Window(fullscr=True, color="black", units="pix")
+
     # SOA Test 
     show_instructions(win, 
         "Before we begin the main task, you'll complete a short section where you'll judge the TIMING between what you SEE and what you HEAR.",
@@ -847,15 +850,16 @@ def run_full_experiment(win, participant_number, csv_filename):
 #run_full_experiment(win, participant_number, csv_filename)
 
 # DUMMY MODE -----------------------------------------------------------------------------------------------------------------------------------------------------------
+win = visual.Window(fullscr=True, color="black", units="pix")
 #get_ready(win, "Get Ready!\nTask will begin in...")
 #run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
-#run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1, 1.25), total_trials=20, visual_delay=0)
-#run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1, 1.25), total_trials=20, visual_delay=0.05)
-#run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1, 1.25), total_trials=20, visual_delay=0.1)
-#run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1, 1.25), total_trials=20, visual_delay=0.15)
-#run_trials(win, participant_number, csv_filename, block_num=5, iti_range=(1, 1.25), total_trials=20, visual_delay=0.20)
-run_soa_test(win, participant_number)
-#run_experiment_questionnaire(win, participant_number, block_questions, block_num=1)
+#run_trials(win, 999, csv_filename, block_num=1, iti_range=(1, 1.25), total_trials=20, visual_delay=0)
+#run_trials(win, 999, csv_filename, block_num=2, iti_range=(1, 1.25), total_trials=20, visual_delay=0.05)
+#run_trials(win, 999, csv_filename, block_num=3, iti_range=(1, 1.25), total_trials=20, visual_delay=0.1)
+#run_trials(win, 999, csv_filename, block_num=4, iti_range=(1, 1.25), total_trials=20, visual_delay=0.15)
+#run_trials(win, 999, csv_filename, block_num=5, iti_range=(1, 1.25), total_trials=20, visual_delay=0.20)
+#run_soa_test(win, 999)
+#run_experiment_questionnaire(win, 999, block_questions, block_num=1)
 
 # 🔶 Close the Experiment
 win.close()
