@@ -631,9 +631,9 @@ def run_experiment_questionnaire(win, participant_number, questions, block_num):
 block_questions = [
     "1. The AUDIO cues influenced my responses more than the visual cues.",
     "2. The VISUAL cues influenced my responses more than the audio cues.",
-    "3. I felt like I had a single, specific strategy throughout the entirety of this section",
-    "4. I had a strategy, but I feel like my strategy changed during this section",
-    "5. I do not feel like I had a specific strategy during this section",
+    "3. I felt like I had a single, specific strategy throughout the entirety of this section.",
+    "4. I had a strategy, but I feel like my strategy changed during this section.",
+    "5. I do not feel like I had a specific strategy during this section.",
 ]
 
 # 🔷 Function to Run Experiment ----------------------------------------------------------------------------------------------------------------------------------------
@@ -651,8 +651,8 @@ def run_full_experiment():
         3)
     show_instructions(win,
         "In each trial, you will either:\n\n"
-        "SEE a BLUE circle and HEAR the word 'BLUE' spoken outloud or\n"
-        "SEE a RED circle and HEAR the word 'RED' spoken outloud.\n\n"
+        "SEE a BLUE circle and HEAR the word 'BLUE' spoken out loud or\n"
+        "SEE a RED circle and HEAR the word 'RED' spoken out loud.\n\n"
         "Your job is to decide whether the visual and audio started at the SAME TIME or at DIFFERENT TIMES.",
         14)
     show_instructions(win,
@@ -692,8 +692,8 @@ def run_full_experiment():
         "In between trials, keep your eyes on the fixation cross in the center of the screen", 
         9)
     show_instructions(win,
-        "Press the RED button\n when you percieve RED.\n\n"
-        "Press the BLUE button\n when you percieve BLUE.\n\n"
+        "Press the RED button\n when you perceive RED.\n\n"
+        "Press the BLUE button\n when you perceive BLUE.\n\n"
         "However, this part of the experiment is timed.\n"
         "You will have less than a second to respond\n\n"
         "You can practice selecting the correct color in this short practice section.", 
@@ -713,18 +713,18 @@ def run_full_experiment():
         "Respond as quickly and accurately as possible.", 
         6)
     show_instructions(win, 
-        "Press the RED button\n when you percieve RED.\n\n"
-        "Press the BLUE button\n when you percieve BLUE.", 
+        "Press the RED button\n when you perceive RED.\n\n"
+        "Press the BLUE button\n when you perceive BLUE.", 
         3)                
     get_ready(win, "Get Ready!\nSection 1 will begin in...")
-    run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[0])
+    run_trials(win, participant_number, block_num=1, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[0])
     show_instructions(win, 
-        "Great job, you competed Section 1! You will now move on to a brief survey.", 
+        "Great job, you completed Section 1! You will now move on to a brief survey.", 
         3)
     show_instructions(win, 
         "This survey consists of 5 statements.\n\n"
         "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n" 
-        "Answer based off of your experience in Section 1 ONLY", 
+        "Answer based on your experience in Section 1 ONLY", 
         8)
     show_instructions(win, 
         "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
@@ -743,16 +743,16 @@ def run_full_experiment():
         "Respond as quickly and accurately as possible.", 
         6)
     show_instructions(win,
-        "Press the RED button\n when you percieve RED.\n\n"
-        "Press the BLUE button\n when you percieve BLUE.", 
+        "Press the RED button\n when you perceive RED.\n\n"
+        "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 2 will begin in...")                 
-    run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[1])
+    run_trials(win, participant_number, block_num=2, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[1])
     show_instructions(win, 
-        "Great job, you completed Section 2! You will now move on to another 5 question survey.", 
+        "Great job, you completed Section 2! You will now move on to another 5-question survey.", 
         2)
     show_instructions(win, 
-        "Answer based off of your experience in Section 2 ONLY", 
+        "Answer based on your experience in Section 2 ONLY", 
         2)
     show_instructions(win,  
         "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
@@ -768,15 +768,15 @@ def run_full_experiment():
                     "Your task is to press the button that matches the perceived color.\n\n"
                     "You will have less than a second to respond after the color is presented.\n\n"
                     "Respond as quickly and accurately as possible.", 6)
-    show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
-                    "Press the BLUE button\n when you percieve BLUE.", 3)
+    show_instructions(win,"Press the RED button\n when you perceive RED.\n\n"
+                    "Press the BLUE button\n when you perceive BLUE.", 3)
     get_ready(win, "Get Ready!\nSection 3 will begin in...") 
-    run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[2])
+    run_trials(win, participant_number, block_num=3, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[2])
     show_instructions(win, 
-        "Great job, you completed Section 3! You will now move on to another 5 question survey.", 
+        "Great job, you completed Section 3! You will now move on to another 5-question survey.", 
         2)
     show_instructions(win, 
-        "Answer based off of your experience in Section 3 ONLY", 
+        "Answer based on your experience in Section 3 ONLY", 
         8)
     show_instructions(win, 
         "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
@@ -794,16 +794,16 @@ def run_full_experiment():
         "Respond as quickly and accurately as possible.", 
         6)
     show_instructions(win,
-        "Press the RED button\n when you percieve RED.\n\n"
-        "Press the BLUE button\n when you percieve BLUE.", 
+        "Press the RED button\n when you perceive RED.\n\n"
+        "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 4 will begin in...") 
-    run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[3])
+    run_trials(win, participant_number, block_num=4, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[3])
     show_instructions(win, 
-        "Great job, you completed Section 3! You will now move on to another 5 question survey.", 
+        "Great job, you completed Section 3! You will now move on to another 5-question survey.", 
         2)
     show_instructions(win, 
-        "Answer based off of your experience in Section 4 ONLY", 
+        "Answer based on your experience in Section 4 ONLY", 
         8)
     show_instructions(win, 
         "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
@@ -822,23 +822,23 @@ def run_full_experiment():
         "Respond as quickly and accurately as possible.", 
         6)
     show_instructions(win,
-        "Press the RED button\n when you percieve RED.\n\n"
-        "Press the BLUE button\n when you percieve BLUE.", 
+        "Press the RED button\n when you perceive RED.\n\n"
+        "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 5 will begin in...") 
-    run_trials(win, participant_number, csv_filename, block_num=5, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[4])
+    run_trials(win, participant_number, block_num=5, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[4])
     show_instructions(win, 
-        "Great job, you completed Section 5! You will now move on to your last 5 question survey.", 
+        "Great job, you completed Section 5! You will now move on to your last 5-question survey.", 
         2)
     show_instructions(win, 
-        "Answer based off of your experience in Section 5 ONLY", 
+        "Answer based on your experience in Section 5 ONLY", 
         8)
     show_instructions(win, 
         "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
         4)
     run_experiment_questionnaire(win, participant_number, block_questions, block_num=5)
     show_instructions(win, 
-        "Congratudlations! You have completed the main portion of the experiment.\nYou may now take a brief break...\n\n"
+        "Congratulations! You have completed the main portion of the experiment.\nYou may now take a brief break...\n\n"
         "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
         7)
     show_instructions(win, 
@@ -874,18 +874,18 @@ def run_trials_only():
         "Respond as quickly and accurately as possible.", 
         6)
     show_instructions(win, 
-        "Press the RED button\n when you percieve RED.\n\n"
-        "Press the BLUE button\n when you percieve BLUE.", 
+        "Press the RED button\n when you perceive RED.\n\n"
+        "Press the BLUE button\n when you perceive BLUE.", 
         3)                
     get_ready(win, "Get Ready!\nSection 1 will begin in...")
-    run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[0])
+    run_trials(win, participant_number, block_num=1, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[0])
     show_instructions(win, 
-        "Great job, you competed Section 1! You will now move on to a brief survey.", 
+        "Great job, you completed Section 1! You will now move on to a brief survey.", 
         3)
     show_instructions(win, 
         "This survey consists of 5 statements.\n\n"
         "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n" 
-        "Answer based off of your experience in Section 1 ONLY", 
+        "Answer based on your experience in Section 1 ONLY", 
         8)
     show_instructions(win, 
         "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
@@ -904,16 +904,16 @@ def run_trials_only():
         "Respond as quickly and accurately as possible.", 
         6)
     show_instructions(win,
-        "Press the RED button\n when you percieve RED.\n\n"
-        "Press the BLUE button\n when you percieve BLUE.", 
+        "Press the RED button\n when you perceive RED.\n\n"
+        "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 2 will begin in...")                 
-    run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[1])
+    run_trials(win, participant_number, block_num=2, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[1])
     show_instructions(win, 
-        "Great job, you completed Section 2! You will now move on to another 5 question survey.", 
+        "Great job, you completed Section 2! You will now move on to another 5-question survey.", 
         2)
     show_instructions(win, 
-        "Answer based off of your experience in Section 2 ONLY", 
+        "Answer based on your experience in Section 2 ONLY", 
         2)
     show_instructions(win,  
         "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
@@ -929,15 +929,15 @@ def run_trials_only():
                     "Your task is to press the button that matches the perceived color.\n\n"
                     "You will have less than a second to respond after the color is presented.\n\n"
                     "Respond as quickly and accurately as possible.", 6)
-    show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
-                    "Press the BLUE button\n when you percieve BLUE.", 3)
+    show_instructions(win,"Press the RED button\n when you perceive RED.\n\n"
+                    "Press the BLUE button\n when you perceive BLUE.", 3)
     get_ready(win, "Get Ready!\nSection 3 will begin in...") 
-    run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[2])
+    run_trials(win, participant_number, block_num=3, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[2])
     show_instructions(win, 
-        "Great job, you completed Section 3! You will now move on to another 5 question survey.", 
+        "Great job, you completed Section 3! You will now move on to another 5-question survey.", 
         2)
     show_instructions(win, 
-        "Answer based off of your experience in Section 3 ONLY", 
+        "Answer based on your experience in Section 3 ONLY", 
         8)
     show_instructions(win, 
         "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
@@ -955,16 +955,16 @@ def run_trials_only():
         "Respond as quickly and accurately as possible.", 
         6)
     show_instructions(win,
-        "Press the RED button\n when you percieve RED.\n\n"
-        "Press the BLUE button\n when you percieve BLUE.", 
+        "Press the RED button\n when you perceive RED.\n\n"
+        "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 4 will begin in...") 
-    run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[3])
+    run_trials(win, participant_number, block_num=4, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[3])
     show_instructions(win, 
-        "Great job, you completed Section 3! You will now move on to another 5 question survey.", 
+        "Great job, you completed Section 3! You will now move on to another 5-question survey.", 
         2)
     show_instructions(win, 
-        "Answer based off of your experience in Section 4 ONLY", 
+        "Answer based on your experience in Section 4 ONLY", 
         8)
     show_instructions(win, 
         "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
@@ -983,23 +983,23 @@ def run_trials_only():
         "Respond as quickly and accurately as possible.", 
         6)
     show_instructions(win,
-        "Press the RED button\n when you percieve RED.\n\n"
-        "Press the BLUE button\n when you percieve BLUE.", 
+        "Press the RED button\n when you perceive RED.\n\n"
+        "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 5 will begin in...") 
-    run_trials(win, participant_number, csv_filename, block_num=5, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[4])
+    run_trials(win, participant_number, block_num=5, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[4])
     show_instructions(win, 
-        "Great job, you completed Section 5! You will now move on to your last 5 question survey.", 
+        "Great job, you completed Section 5! You will now move on to your last 5-question survey.", 
         2)
     show_instructions(win, 
-        "Answer based off of your experience in Section 5 ONLY", 
+        "Answer based on your experience in Section 5 ONLY", 
         8)
     show_instructions(win, 
         "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
         4)
     run_experiment_questionnaire(win, participant_number, block_questions, block_num=5)
     show_instructions(win, 
-        "Congratudlations! You have completed the main portion of the experiment.\nYou may now take a brief break...\n\n"
+        "Congratulations! You have completed the main portion of the experiment.\nYou may now take a brief break...\n\n"
         "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
         7)
 
