@@ -26,9 +26,10 @@ def get_participant_info():
             continue
 
         participant_number = f"P{int(participant_number):03d}"
-        data_folder = "AV_SOA_Data"
-        os.makedirs(data_folder, exist_ok=True)
-        csv_filename = os.path.abspath(os.path.join(data_folder, f"AV_Stroop_Results_{participant_number}.csv"))
+        base_data_folder = "AV_SOA_Data"
+        participant_folder = os.path.join(base_data_folder, participant_number)
+        os.makedirs(participant_folder, exist_ok=True)
+        csv_filename = os.path.abspath(os.path.join(participant_folder, f"AV_Stroop_Results_{participant_number}.csv"))
 
         # Warn if file exists
         if os.path.isfile(csv_filename):
@@ -343,9 +344,6 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, visu
             if response is not None:
                 key, rt = response
 
-            fixation.draw()
-            win.flip()
-
             correct = None
             if trial["type"] in ["V", "A", "AVC"]:
                 expected_response = "b" if (trial["visual"] == "blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "r"
@@ -368,6 +366,7 @@ def run_trials(win, participant_number, csv_filename, block_num, iti_range, visu
                 visual_delay
             ])
 
+            fixation.autoDraw = True
             wait_clock = core.Clock()
             while wait_clock.getTime() < iti:
                 win.flip()
@@ -391,9 +390,10 @@ def run_soa_test(win, participant_number, iti_range=(1.9,2.1), soa_values_ms=[-2
     preloaded_sounds = {color: sound.Sound(path) if os.path.exists(path) else None for color, path in audio_files.items()}
 
     # Save to SOA-specific file
-    data_folder = "AV_SOA_Data"
-    os.makedirs(data_folder, exist_ok=True)
-    soa_filename = os.path.join(data_folder, f"AV_SOA_Results_{participant_number}.csv")
+    base_data_folder = "AV_SOA_Data"
+    participant_folder = os.path.join(base_data_folder, participant_number)
+    os.makedirs(participant_folder, exist_ok=True)
+    soa_filename = os.path.join(participant_folder, f"AV_SOA_Results_{participant_number}.csv")
     file_exists = os.path.exists(soa_filename)
 
     with open(soa_filename, "a", newline="") as file:
@@ -503,6 +503,7 @@ def run_soa_test(win, participant_number, iti_range=(1.9,2.1), soa_values_ms=[-2
             fixation.draw()
             win.flip()
             core.wait(random.uniform(*iti_range))
+
     fixation.autoDraw = False
     win.flip()
 
@@ -616,9 +617,10 @@ def run_experiment_questionnaire(win, participant_number, questions, block_num):
                     warning_message.text = ""
 
     # Save responses to a per-participant survey CSV
-    data_folder = "AV_SOA_Data"
-    os.makedirs(data_folder, exist_ok=True)
-    survey_filename = os.path.join(data_folder, f"AV_Strategy_Survey_{participant_number}.csv")
+    base_data_folder = "AV_SOA_Data"
+    participant_folder = os.path.join(base_data_folder, participant_number)
+    os.makedirs(participant_folder, exist_ok=True)
+    survey_filename = os.path.join(participant_folder, f"AV_Strategy_Survey_{participant_number}.csv")
     file_exists = os.path.exists(survey_filename)
 
     with open(survey_filename, "a", newline="") as file:
@@ -635,15 +637,15 @@ block_questions = [
     "5. I do not feel like I had a specific strategy during this section",
 ]
 
+# 🔶 Get Participant Info
+#participant_number, csv_filename = get_participant_info()
+
+# 🔶 Initialize PsychoPy Window
+win = visual.Window(fullscr=True, color="black", units="pix")
+
 # 🔷 Function to Run Experiment ----------------------------------------------------------------------------------------------------------------------------------------
 def run_full_experiment(win, participant_number, csv_filename):
     
-    # 🔶 Get Participant Info
-    participant_number, csv_filename = get_participant_info()
-
-    # 🔶 Initialize PsychoPy Window
-    win = visual.Window(fullscr=True, color="black", units="pix")
-
     # SOA Test 
     show_instructions(win, 
         "Before we begin the main task, you'll complete a short section where you'll judge the TIMING between what you SEE and what you HEAR.",
@@ -840,26 +842,179 @@ def run_full_experiment(win, participant_number, csv_filename):
         "Congratudlations! You have completed the main portion of the experiment.\nYou may now take a brief break...\n\n"
         "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
         7)
-
     show_instructions(win, 
         "You have now completed the experiment!\n"
         "Thank you so much for participating!", 
         3)  
 
+# 🔷 Function to Run Trials Only ----------------------------------------------------------------------------------------------------------------------------------------
+def run_trials_only(win, participant_number, csv_filename):
+
+    # Randomize visual delays for blocks 1–5
+    visual_delays = [0, 0.05, 0.1, 0.15, 0.2]
+    random.shuffle(visual_delays)
+
+    # Establish number of total trials for run_trials in block 1-5
+    total_trials = 80
+
+    # 🔶 RUN TRIALS
+            # block 1
+    show_instructions(win, 
+        "Now you will be moving on to the real task.\n\n"
+        "Just like the practice, you will have less than a second to respond after the color is presented.\n\n"
+        "Respond as quickly and accurately as possible.", 
+        6)
+    show_instructions(win, 
+        "Press the RED button\n when you percieve RED.\n\n"
+        "Press the BLUE button\n when you percieve BLUE.", 
+        3)                
+    get_ready(win, "Get Ready!\nSection 1 will begin in...")
+    run_trials(win, participant_number, csv_filename, block_num=1, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[0])
+    show_instructions(win, 
+        "Great job, you competed Section 1! You will now move on to a brief survey.", 
+        3)
+    show_instructions(win, 
+        "This survey consists of 5 statements.\n\n"
+        "Please use the keyboard to rate your agreement with each statement on a scale from 1 to 5.\n\n" 
+        "Answer based off of your experience in Section 1 ONLY", 
+        8)
+    show_instructions(win, 
+        "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
+        4)
+    run_experiment_questionnaire(win, participant_number, block_questions, block_num=1)
+    show_instructions(win, 
+        "You may now take a brief break...\n\n"
+        "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
+        7)
+
+            # block 2
+    show_instructions(win, 
+        "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
+        "Your task is to press the button that matches the perceived color.\n\n"
+        "You will have less than a second to respond after the color is presented.\n\n"
+        "Respond as quickly and accurately as possible.", 
+        6)
+    show_instructions(win,
+        "Press the RED button\n when you percieve RED.\n\n"
+        "Press the BLUE button\n when you percieve BLUE.", 
+        3)
+    get_ready(win, "Get Ready!\nSection 2 will begin in...")                 
+    run_trials(win, participant_number, csv_filename, block_num=2, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[1])
+    show_instructions(win, 
+        "Great job, you completed Section 2! You will now move on to another 5 question survey.", 
+        2)
+    show_instructions(win, 
+        "Answer based off of your experience in Section 2 ONLY", 
+        2)
+    show_instructions(win,  
+        "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
+        4)
+    run_experiment_questionnaire(win, participant_number, block_questions, block_num=2)
+    show_instructions(win, 
+        "You may now take a brief break...\n\n"
+        "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
+        7)
+
+            # block 3
+    show_instructions(win, "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
+                    "Your task is to press the button that matches the perceived color.\n\n"
+                    "You will have less than a second to respond after the color is presented.\n\n"
+                    "Respond as quickly and accurately as possible.", 6)
+    show_instructions(win,"Press the RED button\n when you percieve RED.\n\n"
+                    "Press the BLUE button\n when you percieve BLUE.", 3)
+    get_ready(win, "Get Ready!\nSection 3 will begin in...") 
+    run_trials(win, participant_number, csv_filename, block_num=3, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[2])
+    show_instructions(win, 
+        "Great job, you completed Section 3! You will now move on to another 5 question survey.", 
+        2)
+    show_instructions(win, 
+        "Answer based off of your experience in Section 3 ONLY", 
+        8)
+    show_instructions(win, 
+        "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
+        4)
+    run_experiment_questionnaire(win, participant_number, block_questions, block_num=3)
+    show_instructions(win, 
+        "You may now take a brief break...\n\n"
+        "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
+        7)
+            # block 4
+    show_instructions(win, 
+        "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
+        "Your task is to press the button that matches the perceived color.\n\n"
+        "You will have less than a second to respond after the color is presented.\n\n"
+        "Respond as quickly and accurately as possible.", 
+        6)
+    show_instructions(win,
+        "Press the RED button\n when you percieve RED.\n\n"
+        "Press the BLUE button\n when you percieve BLUE.", 
+        3)
+    get_ready(win, "Get Ready!\nSection 4 will begin in...") 
+    run_trials(win, participant_number, csv_filename, block_num=4, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[3])
+    show_instructions(win, 
+        "Great job, you completed Section 3! You will now move on to another 5 question survey.", 
+        2)
+    show_instructions(win, 
+        "Answer based off of your experience in Section 4 ONLY", 
+        8)
+    show_instructions(win, 
+        "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
+        4)
+    run_experiment_questionnaire(win, participant_number, block_questions, block_num=4)
+    show_instructions(win, 
+        "You may now take a brief break...\n\n"
+        "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
+        7)
+
+            # block 5
+    show_instructions(win, 
+        "Like before, you will either SEE a color, HEAR a color, or both.\n\n"
+        "Your task is to press the button that matches the perceived color.\n\n"
+        "You will have less than a second to respond after the color is presented.\n\n"
+        "Respond as quickly and accurately as possible.", 
+        6)
+    show_instructions(win,
+        "Press the RED button\n when you percieve RED.\n\n"
+        "Press the BLUE button\n when you percieve BLUE.", 
+        3)
+    get_ready(win, "Get Ready!\nSection 5 will begin in...") 
+    run_trials(win, participant_number, csv_filename, block_num=5, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[4])
+    show_instructions(win, 
+        "Great job, you completed Section 5! You will now move on to your last 5 question survey.", 
+        2)
+    show_instructions(win, 
+        "Answer based off of your experience in Section 5 ONLY", 
+        8)
+    show_instructions(win, 
+        "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
+        4)
+    run_experiment_questionnaire(win, participant_number, block_questions, block_num=5)
+    show_instructions(win, 
+        "Congratudlations! You have completed the main portion of the experiment.\nYou may now take a brief break...\n\n"
+        "Feel free to stand up and stretch.\nWhenever you are ready, press the space bar to proceed.", 
+        7)
+
+    show_instructions(win, 
+        "You have now completed the experiment!\n"
+        "Thank you so much for participating!", 
+        3)  
+    
 # 🔶 RUN EXPERIMENT
 #run_full_experiment(win, participant_number, csv_filename)
 
+# 🔶 RUN EXPERIMENT
+#run_trials_only(win, participant_number, csv_filename)
+
 # DUMMY MODE -----------------------------------------------------------------------------------------------------------------------------------------------------------
-win = visual.Window(fullscr=True, color="black", units="pix")
 #get_ready(win, "Get Ready!\nTask will begin in...")
-#run_practice(win, iti_range=(1.25, 1.5), total_trials=12, trial_types=["V", "A"])
-#run_trials(win, 999, csv_filename, block_num=1, iti_range=(1, 1.25), total_trials=20, visual_delay=0)
-#run_trials(win, 999, csv_filename, block_num=2, iti_range=(1, 1.25), total_trials=20, visual_delay=0.05)
-#run_trials(win, 999, csv_filename, block_num=3, iti_range=(1, 1.25), total_trials=20, visual_delay=0.1)
-#run_trials(win, 999, csv_filename, block_num=4, iti_range=(1, 1.25), total_trials=20, visual_delay=0.15)
-#run_trials(win, 999, csv_filename, block_num=5, iti_range=(1, 1.25), total_trials=20, visual_delay=0.20)
-#run_soa_test(win, 999)
-#run_experiment_questionnaire(win, 999, block_questions, block_num=1)
+#run_practice(win, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A"])
+#run_trials(win, 999, os.path.abspath(os.path.join("AV_SOA_Data", f"AV_Stroop_Results_P{999}.csv")), block_num=1, iti_range=(1, 1.25), total_trials=5, visual_delay=0)
+run_trials(win, 999, os.path.abspath(os.path.join("AV_SOA_Data", f"AV_Stroop_Results_P{999}.csv")), block_num=2, iti_range=(1, 1.25), total_trials=5, visual_delay=0.05)
+#run_trials(win, 999, os.path.abspath(os.path.join("AV_SOA_Data", f"AV_Stroop_Results_P{999}.csv")), block_num=3, iti_range=(1, 1.25), total_trials=5, visual_delay=0.1)
+#run_trials(win, 999, os.path.abspath(os.path.join("AV_SOA_Data", f"AV_Stroop_Results_P{999}.csv")), block_num=4, iti_range=(1, 1.25), total_trials=5, visual_delay=0.15)
+#run_trials(win, 999, os.path.abspath(os.path.join("AV_SOA_Data", f"AV_Stroop_Results_P{999}.csv")), block_num=5, iti_range=(1, 1.25), total_trials=5, visual_delay=0.20)
+run_soa_test(win, 999)
+run_experiment_questionnaire(win, 999, block_questions, block_num=1)
 
 # 🔶 Close the Experiment
 win.close()
