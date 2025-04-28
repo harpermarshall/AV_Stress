@@ -1013,10 +1013,10 @@ def run_trials_only():
     core.quit()
 
 # 🔶 RUN EXPERIMENT
-run_full_experiment()
+#run_full_experiment()
 
 # 🔶 RUN EXPERIMENT
-#run_trials_only()
+run_trials_only()
 
 # DUMMY MODE -----------------------------------------------------------------------------------------------------------------------------------------------------------
 """win = visual.Window(fullscr=True, color="black", units="pix")
