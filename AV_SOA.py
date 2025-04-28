@@ -301,37 +301,69 @@ def run_trials(win, participant_number, block_num, iti_range, visual_delay, tota
             # Prepare audio
             beep = trial["audio"]
 
-            audio_onset_time = core.getTime()
-            if beep:
-                beep.play()
-                print(f"🎵 Audio started at: {audio_onset_time:.3f} sec")
+            # --- Begin new SOA/RT section ---
+            # Use 'soa' internally for clarity
+            soa = visual_delay
 
+            if 'escape' in event.getKeys():
+                print("Escape key pressed! Exiting...")
+                win.close()
+                core.quit()
+
+            # Remove fixation cross before stimuli
             fixation.autoDraw = False
             win.flip()
-            # Delay RT recording and stimulus presentation by 0.04 seconds
-            # Uncomment the following line if you wish to add the delay:
-            core.wait(visual_delay)
 
-            if trial["visual"]:
-                circle.draw()
-                win.flip()
-                visual_onset_time = core.getTime()
-                print(f"🎨 Visual stimulus appeared at: {visual_onset_time:.3f} sec")
+            # Determine which stimulus comes first and present accordingly
+            if soa < 0:  # Visual first
+                if trial["visual"]:
+                    circle.draw()
+                    win.flip()
+                    visual_onset_time = core.getTime()
+                    print(f"🎨 Visual onset: {visual_onset_time:.3f} sec")
+                    core.wait(abs(soa))
+                if trial["audio"]:
+                    trial["audio"].play()
+                    audio_onset_time = core.getTime()
+                    print(f"🎵 Audio onset: {audio_onset_time:.3f} sec")
+            elif soa > 0:  # Audio first
+                if trial["audio"]:
+                    trial["audio"].play()
+                    audio_onset_time = core.getTime()
+                    print(f"🎵 Audio onset: {audio_onset_time:.3f} sec")
+                core.wait(soa)
+                if trial["visual"]:
+                    circle.draw()
+                    win.flip()
+                    visual_onset_time = core.getTime()
+                    print(f"🎨 Visual onset: {visual_onset_time:.3f} sec")
+            else:  # Simultaneous
+                if trial["audio"]:
+                    trial["audio"].play()
+                    audio_onset_time = core.getTime()
+                    print(f"🎵 Audio onset: {audio_onset_time:.3f} sec")
+                if trial["visual"]:
+                    circle.draw()
+                    win.flip()
+                    visual_onset_time = core.getTime()
+                    print(f"🎨 Visual onset: {visual_onset_time:.3f} sec")
+
+            # Start RT clock exactly at first stimulus
+            rt_clock = core.Clock()
+            rt_clock.reset()
 
             event.clearEvents(eventType='keyboard')
-            clock = core.Clock()
-            start_time = clock.getTime()
-
             response = None
             key, rt = "No Response", None
 
-            # Response window (1 sec) with continuous timer and visual stimulus updating
-            while response is None and clock.getTime() - start_time < 1:
-                keys = event.getKeys(timeStamped=clock)
+            # Wait indefinitely for a valid response
+            while response is None:
+                keys = event.getKeys(timeStamped=rt_clock)
                 for k in keys:
                     key_name, key_rt = k
                     if key_name in response_keys:
                         response = (key_name, key_rt)
+                        break
                     elif key_name == "escape":
                         print("Escape key pressed! Exiting...")
                         win.close()
@@ -348,8 +380,6 @@ def run_trials(win, participant_number, block_num, iti_range, visual_delay, tota
             elif trial["type"] in ["AVI"]:
                 correct = "NA"
 
-            iti = random.uniform(iti_range[0], iti_range[1])
-
             writer.writerow([
                 participant_number,
                 block_num,
@@ -363,7 +393,9 @@ def run_trials(win, participant_number, block_num, iti_range, visual_delay, tota
                 visual_delay
             ])
 
+            # After response, immediately begin ITI
             fixation.autoDraw = True
+            iti = random.uniform(iti_range[0], iti_range[1])
             wait_clock = core.Clock()
             while wait_clock.getTime() < iti:
                 win.flip()
@@ -1016,13 +1048,13 @@ def run_trials_only():
 #run_full_experiment()
 
 # 🔶 RUN EXPERIMENT
-run_trials_only()
+#run_trials_only()
 
 # DUMMY MODE -----------------------------------------------------------------------------------------------------------------------------------------------------------
-"""win = visual.Window(fullscr=True, color="black", units="pix")
+win = visual.Window(fullscr=True, color="black", units="pix")
 get_ready(win, "Get Ready!\nTask will begin in...")
-run_practice(win, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A"])
-#run_trials(win, "P999", block_num=1, iti_range=(1, 1.25), total_trials=5, visual_delay=0)
+#run_practice(win, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A"])
+run_trials(win, "P999", block_num=1, iti_range=(1, 1.25), total_trials=20, visual_delay=0)
 #run_trials(win, "P999", block_num=2, iti_range=(1, 1.25), total_trials=5, visual_delay=0.05)
 #run_trials(win, "P999", block_num=3, iti_range=(1, 1.25), total_trials=5, visual_delay=0.1)
 #run_trials(win, "P999", block_num=4, iti_range=(1, 1.25), total_trials=5, visual_delay=0.15)
@@ -1030,4 +1062,4 @@ run_practice(win, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A"])
 run_soa_test(win, "P999")
 run_experiment_questionnaire(win, "P999", block_questions, block_num=1)
 win.close()
-core.quit()"""
+core.quit()
