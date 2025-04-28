@@ -99,6 +99,110 @@ def get_ready(win, text):
     # Clear the screen after countdown
     win.flip()
 
+# ♦️ Function to Run Single Trial (called within run_trials)
+def run_single_trial(trial, stim_offset, win, response_keys):
+    event.clearEvents(eventType='keyboard')
+
+    rt_clock = core.Clock()  # Start RT clock immediately
+
+    circle = visual.Circle(win, radius=75, fillColor=trial["visual"], lineColor=None) if trial["visual"] else None
+    beep = trial["audio"]
+
+    response, rt = None, None 
+
+    if stim_offset <= 0:
+        if trial["visual"]:
+            circle.draw()
+            win.flip()
+            visual_onset_time = core.getTime()
+            rt_clock.reset()
+
+            event.clearEvents(eventType='keyboard')
+            response = None
+            rt = None
+
+            print(f"🎨 Visual onset: {visual_onset_time:.3f} sec")
+
+        wait_clock = core.Clock()
+        while wait_clock.getTime() < abs(stim_offset) and response is None:
+            keys = event.getKeys(timeStamped=rt_clock)
+            for k in keys:
+                key_name, key_rt = k
+                if key_name in response_keys:
+                    response = key_name
+                    rt = key_rt
+                    break
+                elif key_name == "escape":
+                    print("Escape key pressed! Exiting...")
+                    win.close()
+                    core.quit()
+            core.wait(0.01)
+
+        if trial["audio"] and response is None:
+            beep.play()
+            audio_onset_time = core.getTime()
+            print(f"🎵 Audio onset: {audio_onset_time:.3f} sec")
+
+    elif stim_offset > 0:
+        if trial["audio"]:
+            beep.play()
+            audio_onset_time = core.getTime()
+            rt_clock.reset()
+
+            event.clearEvents(eventType='keyboard')
+            response = None
+            rt = None
+
+            print(f"🎵 Audio onset: {audio_onset_time:.3f} sec")
+
+        wait_clock = core.Clock()
+        while wait_clock.getTime() < stim_offset and response is None:
+            keys = event.getKeys(timeStamped=rt_clock)
+            for k in keys:
+                key_name, key_rt = k
+                if key_name in response_keys:
+                    response = key_name
+                    rt = key_rt
+                    break
+                elif key_name == "escape":
+                    print("Escape key pressed! Exiting...")
+                    win.close()
+                    core.quit()
+            core.wait(0.01)
+
+        if trial["visual"] and response is None:
+            circle.draw()
+            win.flip()
+            visual_onset_time = core.getTime()
+            print(f"🎨 Visual onset: {visual_onset_time:.3f} sec")
+
+    while response is None:
+        keys = event.getKeys(timeStamped=rt_clock)
+        for k in keys:
+            key_name, key_rt = k
+            if key_name in response_keys:
+                response = key_name
+                rt = key_rt
+                break
+            elif key_name == "escape":
+                print("Escape key pressed! Exiting...")
+                win.close()
+                core.quit()
+        core.wait(0.01)
+
+    # Clip negative RT if somehow happens
+    if rt is not None and rt < 0:
+        rt = 0.0
+
+    correct = None
+    if trial["type"] in ["V", "A", "AVC"]:
+        expected_response = "b" if (trial["visual"] == "blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "r"
+        correct = (response == expected_response)
+    elif trial["type"] == "AVI":
+        correct = "NA"
+
+    return response, rt, correct
+
 # 🔷 Function to Run Practice
 def run_practice(win, iti_range, total_trials, trial_types):
     response_keys = ["r", "b"]  # Response keys
@@ -223,7 +327,7 @@ def run_practice(win, iti_range, total_trials, trial_types):
             core.wait(random.uniform(*iti_range))
 
 # 🔷 Function to Run Trials
-def run_trials(win, participant_number, block_num, iti_range, visual_delay, total_trials):
+def run_trials(win, participant_number, block_num, iti_range, stim_offset, total_trials):
 
     base_data_folder = "AV_SOA_Data"
     participant_folder = os.path.join(base_data_folder, participant_number)
@@ -289,96 +393,7 @@ def run_trials(win, participant_number, block_num, iti_range, visual_delay, tota
 
             print(f"  🔹 Trial {i+1}: {trial}")
 
-            if trial["audio"]:
-                trial["audio"].stop()
-
-            event.clearEvents(eventType='keyboard')
-
-            # Prepare visual stimulus
-            if trial["visual"]:
-                circle = visual.Circle(win, radius=75, fillColor=trial["visual"], lineColor=None)
-
-            # Prepare audio
-            beep = trial["audio"]
-
-            # --- Begin new SOA/RT section ---
-            # Use 'soa' internally for clarity
-            soa = visual_delay
-
-            if 'escape' in event.getKeys():
-                print("Escape key pressed! Exiting...")
-                win.close()
-                core.quit()
-
-            # Remove fixation cross before stimuli
-            fixation.autoDraw = False
-            win.flip()
-
-            # Determine which stimulus comes first and present accordingly
-            if soa < 0:  # Visual first
-                if trial["visual"]:
-                    circle.draw()
-                    win.flip()
-                    visual_onset_time = core.getTime()
-                    print(f"🎨 Visual onset: {visual_onset_time:.3f} sec")
-                    core.wait(abs(soa))
-                if trial["audio"]:
-                    trial["audio"].play()
-                    audio_onset_time = core.getTime()
-                    print(f"🎵 Audio onset: {audio_onset_time:.3f} sec")
-            elif soa > 0:  # Audio first
-                if trial["audio"]:
-                    trial["audio"].play()
-                    audio_onset_time = core.getTime()
-                    print(f"🎵 Audio onset: {audio_onset_time:.3f} sec")
-                core.wait(soa)
-                if trial["visual"]:
-                    circle.draw()
-                    win.flip()
-                    visual_onset_time = core.getTime()
-                    print(f"🎨 Visual onset: {visual_onset_time:.3f} sec")
-            else:  # Simultaneous
-                if trial["audio"]:
-                    trial["audio"].play()
-                    audio_onset_time = core.getTime()
-                    print(f"🎵 Audio onset: {audio_onset_time:.3f} sec")
-                if trial["visual"]:
-                    circle.draw()
-                    win.flip()
-                    visual_onset_time = core.getTime()
-                    print(f"🎨 Visual onset: {visual_onset_time:.3f} sec")
-
-            # Start RT clock exactly at first stimulus
-            rt_clock = core.Clock()
-            rt_clock.reset()
-
-            event.clearEvents(eventType='keyboard')
-            response = None
-            key, rt = "No Response", None
-
-            # Wait indefinitely for a valid response
-            while response is None:
-                keys = event.getKeys(timeStamped=rt_clock)
-                for k in keys:
-                    key_name, key_rt = k
-                    if key_name in response_keys:
-                        response = (key_name, key_rt)
-                        break
-                    elif key_name == "escape":
-                        print("Escape key pressed! Exiting...")
-                        win.close()
-                        core.quit()
-                core.wait(0.01)
-
-            if response is not None:
-                key, rt = response
-
-            correct = None
-            if trial["type"] in ["V", "A", "AVC"]:
-                expected_response = "b" if (trial["visual"] == "blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "r"
-                correct = key == expected_response
-            elif trial["type"] in ["AVI"]:
-                correct = "NA"
+            response, rt, correct = run_single_trial(trial, stim_offset, win, response_keys)
 
             writer.writerow([
                 participant_number,
@@ -387,10 +402,10 @@ def run_trials(win, participant_number, block_num, iti_range, visual_delay, tota
                 trial["type"],
                 trial["visual"] if trial["visual"] is not None else "NA",
                 os.path.basename(trial["audio"].fileName) if trial["audio"] else "NA",
-                key if key is not None else "NA",
+                response if response is not None else "NA",
                 rt if rt is not None else "NA",
                 correct if correct is not None else "NA",
-                visual_delay
+                stim_offset
             ])
 
             # After response, immediately begin ITI
@@ -400,9 +415,8 @@ def run_trials(win, participant_number, block_num, iti_range, visual_delay, tota
             while wait_clock.getTime() < iti:
                 win.flip()
                 core.wait(0.01)
-
-        fixation.autoDraw = False
-        win.flip()
+            fixation.autoDraw = False
+            win.flip()
 
 # 🔷 Function for SOA Test
 def run_soa_test(win, participant_number, iti_range=(1.9,2.1), soa_values_ms=[-200, -150, -100, -50, 0, 50, 100, 150, 200, 300, 400]):
@@ -707,8 +721,8 @@ def run_full_experiment():
     run_soa_test(win, participant_number)
 
     # Randomize visual delays for blocks 1–5
-    visual_delays = [0, 0.05, 0.1, 0.15, 0.2]
-    random.shuffle(visual_delays)
+    stim_offsets = [0, 0.05, 0.1, 0.15, 0.2]
+    random.shuffle(stim_offsets)
 
     # Establish number of total trials for run_trials in block 1-5
     total_trials = 80
@@ -749,7 +763,7 @@ def run_full_experiment():
         "Press the BLUE button\n when you perceive BLUE.", 
         3)                
     get_ready(win, "Get Ready!\nSection 1 will begin in...")
-    run_trials(win, participant_number, block_num=1, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[0])
+    run_trials(win, participant_number, block_num=1, iti_range=(1.75, 2), total_trials=total_trials, stim_offset=stim_offsets[0])
     show_instructions(win, 
         "Great job, you completed Section 1! You will now move on to a brief survey.", 
         3)
@@ -779,7 +793,7 @@ def run_full_experiment():
         "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 2 will begin in...")                 
-    run_trials(win, participant_number, block_num=2, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[1])
+    run_trials(win, participant_number, block_num=2, iti_range=(1.75, 2), total_trials=total_trials, stim_offset=stim_offsets[1])
     show_instructions(win, 
         "Great job, you completed Section 2! You will now move on to another 5-question survey.", 
         2)
@@ -803,7 +817,7 @@ def run_full_experiment():
     show_instructions(win,"Press the RED button\n when you perceive RED.\n\n"
                     "Press the BLUE button\n when you perceive BLUE.", 3)
     get_ready(win, "Get Ready!\nSection 3 will begin in...") 
-    run_trials(win, participant_number, block_num=3, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[2])
+    run_trials(win, participant_number, block_num=3, iti_range=(1.75, 2), total_trials=total_trials, stim_offset=stim_offsets[2])
     show_instructions(win, 
         "Great job, you completed Section 3! You will now move on to another 5-question survey.", 
         2)
@@ -830,7 +844,7 @@ def run_full_experiment():
         "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 4 will begin in...") 
-    run_trials(win, participant_number, block_num=4, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[3])
+    run_trials(win, participant_number, block_num=4, iti_range=(1.75, 2), total_trials=total_trials, stim_offset=stim_offsets[3])
     show_instructions(win, 
         "Great job, you completed Section 3! You will now move on to another 5-question survey.", 
         2)
@@ -858,7 +872,7 @@ def run_full_experiment():
         "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 5 will begin in...") 
-    run_trials(win, participant_number, block_num=5, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[4])
+    run_trials(win, participant_number, block_num=5, iti_range=(1.75, 2), total_trials=total_trials, stim_offset=stim_offsets[4])
     show_instructions(win, 
         "Great job, you completed Section 5! You will now move on to your last 5-question survey.", 
         2)
@@ -892,8 +906,8 @@ def run_trials_only():
     win = visual.Window(fullscr=True, color="black", units="pix")
 
     # Randomize visual delays for blocks 1–5
-    visual_delays = [0, 0.05, 0.1, 0.15, 0.2]
-    random.shuffle(visual_delays)
+    stim_offsets = [0, 0.05, 0.1, 0.15, 0.2]
+    random.shuffle(stim_offsets)
 
     # Establish number of total trials for run_trials in block 1-5
     total_trials = 80
@@ -910,7 +924,7 @@ def run_trials_only():
         "Press the BLUE button\n when you perceive BLUE.", 
         3)                
     get_ready(win, "Get Ready!\nSection 1 will begin in...")
-    run_trials(win, participant_number, block_num=1, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[0])
+    run_trials(win, participant_number, block_num=1, iti_range=(1.75, 2), total_trials=total_trials, stim_offset=stim_offsets[0])
     show_instructions(win, 
         "Great job, you completed Section 1! You will now move on to a brief survey.", 
         3)
@@ -940,7 +954,7 @@ def run_trials_only():
         "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 2 will begin in...")                 
-    run_trials(win, participant_number, block_num=2, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[1])
+    run_trials(win, participant_number, block_num=2, iti_range=(1.75, 2), total_trials=total_trials, stim_offset=stim_offsets[1])
     show_instructions(win, 
         "Great job, you completed Section 2! You will now move on to another 5-question survey.", 
         2)
@@ -964,7 +978,7 @@ def run_trials_only():
     show_instructions(win,"Press the RED button\n when you perceive RED.\n\n"
                     "Press the BLUE button\n when you perceive BLUE.", 3)
     get_ready(win, "Get Ready!\nSection 3 will begin in...") 
-    run_trials(win, participant_number, block_num=3, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[2])
+    run_trials(win, participant_number, block_num=3, iti_range=(1.75, 2), total_trials=total_trials, stim_offset=stim_offsets[2])
     show_instructions(win, 
         "Great job, you completed Section 3! You will now move on to another 5-question survey.", 
         2)
@@ -991,7 +1005,7 @@ def run_trials_only():
         "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 4 will begin in...") 
-    run_trials(win, participant_number, block_num=4, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[3])
+    run_trials(win, participant_number, block_num=4, iti_range=(1.75, 2), total_trials=total_trials, stim_offset=stim_offsets[3])
     show_instructions(win, 
         "Great job, you completed Section 3! You will now move on to another 5-question survey.", 
         2)
@@ -1019,7 +1033,7 @@ def run_trials_only():
         "Press the BLUE button\n when you perceive BLUE.", 
         3)
     get_ready(win, "Get Ready!\nSection 5 will begin in...") 
-    run_trials(win, participant_number, block_num=5, iti_range=(1.75, 2), total_trials=total_trials, visual_delay=visual_delays[4])
+    run_trials(win, participant_number, block_num=5, iti_range=(1.75, 2), total_trials=total_trials, stim_offset=stim_offsets[4])
     show_instructions(win, 
         "Great job, you completed Section 5! You will now move on to your last 5-question survey.", 
         2)
@@ -1054,12 +1068,12 @@ def run_trials_only():
 win = visual.Window(fullscr=True, color="black", units="pix")
 get_ready(win, "Get Ready!\nTask will begin in...")
 #run_practice(win, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A"])
-run_trials(win, "P999", block_num=1, iti_range=(1, 1.25), total_trials=20, visual_delay=0)
-#run_trials(win, "P999", block_num=2, iti_range=(1, 1.25), total_trials=5, visual_delay=0.05)
-#run_trials(win, "P999", block_num=3, iti_range=(1, 1.25), total_trials=5, visual_delay=0.1)
-#run_trials(win, "P999", block_num=4, iti_range=(1, 1.25), total_trials=5, visual_delay=0.15)
-#run_trials(win, "P999", block_num=5, iti_range=(1, 1.25), total_trials=5, visual_delay=0.20)
-run_soa_test(win, "P999")
-run_experiment_questionnaire(win, "P999", block_questions, block_num=1)
+run_trials(win, "P999", block_num=1, iti_range=(1, 1.25), total_trials=20, stim_offset=0)
+#run_trials(win, "P999", block_num=2, iti_range=(1, 1.25), total_trials=5, stim_offset=0.05)
+#run_trials(win, "P999", block_num=3, iti_range=(1, 1.25), total_trials=5, stim_offset=0.1)
+#run_trials(win, "P999", block_num=4, iti_range=(1, 1.25), total_trials=5, stim_offset=0.15)
+#run_trials(win, "P999", block_num=5, iti_range=(1, 1.25), total_trials=5, stim_offset=0.20)
+#run_soa_test(win, "P999")
+#run_experiment_questionnaire(win, "P999", block_questions, block_num=1)
 win.close()
 core.quit()
