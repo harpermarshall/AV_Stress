@@ -1068,7 +1068,7 @@ def run_trials_only():
 win = visual.Window(fullscr=True, color="black", units="pix")
 get_ready(win, "Get Ready!\nTask will begin in...")
 #run_practice(win, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A"])
-run_trials(win, "P999", block_num=1, iti_range=(1, 1.25), total_trials=20, stim_offset=0)
+run_trials(win, "P999", block_num=1, iti_range=(1, 1.25), total_trials=20, stim_offset=.5)
 #run_trials(win, "P999", block_num=2, iti_range=(1, 1.25), total_trials=5, stim_offset=0.05)
 #run_trials(win, "P999", block_num=3, iti_range=(1, 1.25), total_trials=5, stim_offset=0.1)
 #run_trials(win, "P999", block_num=4, iti_range=(1, 1.25), total_trials=5, stim_offset=0.15)
