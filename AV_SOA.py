@@ -210,8 +210,8 @@ def run_practice(win, iti_range, total_trials, trial_types):
 
     # Preload audio files
     audio_files = {
-        "red": "/Users/harpermarshall/Desktop/Project 1/sounds/red.mp3",
-        "blue": "/Users/harpermarshall/Desktop/Project 1/sounds/blue.mp3"
+        "red": "/Users/harpermarshall/Desktop/Project 1/sounds/red.wav",
+        "blue": "/Users/harpermarshall/Desktop/Project 1/sounds/blue.wav"
     }
     preloaded_sounds = {color: sound.Sound(path) if os.path.exists(path) else None for color, path in audio_files.items()}
 
@@ -338,8 +338,8 @@ def run_trials(win, participant_number, block_num, iti_range, stim_offset, total
     fixation = visual.TextStim(win, text="+", color="white", height=40)
 
     audio_files = {
-        "red": "/Users/harpermarshall/Desktop/Project 1/sounds/red.mp3",
-        "blue": "/Users/harpermarshall/Desktop/Project 1/sounds/blue.mp3"
+        "red": "/Users/harpermarshall/Desktop/Project 1/sounds/red.wav",
+        "blue": "/Users/harpermarshall/Desktop/Project 1/sounds/blue.wav"
     }
     preloaded_sounds = {color: sound.Sound(path) if os.path.exists(path) else None for color, path in audio_files.items()}
 
@@ -347,7 +347,7 @@ def run_trials(win, participant_number, block_num, iti_range, stim_offset, total
     with open(csv_filename, "a", newline="") as file:
         writer = csv.writer(file)
         if not file_exists:
-            writer.writerow(["Participant", "Block", "Trial", "Type", "Visual", "Audio", "Response", "RT", "Correct", "Visual Delay"])
+            writer.writerow(["Participant", "Block", "Trial", "Type", "Visual", "Audio", "Response", "RT", "Correct", "Offset"])
 
         trials = []
         proportions = {"A": 0.3, "V": 0.3, "AVC": 0.3, "AVI": 0.1}
@@ -427,8 +427,8 @@ def run_soa_test(win, participant_number, iti_range=(1.9,2.1), soa_values_ms=[-2
     fixation = visual.TextStim(win, text="+", color="white", height=40)
     response_keys = ["s", "a"]
     audio_files = {
-        "red": "/Users/harpermarshall/Desktop/Project 1/sounds/red.mp3",
-        "blue": "/Users/harpermarshall/Desktop/Project 1/sounds/blue.mp3"
+        "red": "/Users/harpermarshall/Desktop/Project 1/sounds/red.wav",
+        "blue": "/Users/harpermarshall/Desktop/Project 1/sounds/blue.wav"
     }
     preloaded_sounds = {color: sound.Sound(path) if os.path.exists(path) else None for color, path in audio_files.items()}
 

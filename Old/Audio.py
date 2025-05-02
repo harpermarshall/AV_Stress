@@ -29,8 +29,10 @@ async def create_audio(word, filename, speed=1.2):
     # Save audio
     await tts.save(file_path)
     
-    # Load the file and measure duration
-    audio = AudioSegment.from_file(file_path)
+    # Load the file, resample to 44100 Hz, normalize, and export as WAV
+    audio = AudioSegment.from_file(file_path).set_frame_rate(44100)
+    audio = audio.normalize()
+    audio.export(file_path, format="wav")
     duration_ms = len(audio)  # Get duration in milliseconds
     print(f"Created '{word}' audio with speed factor {speed} ({rate}) -> {file_path} (Duration: {duration_ms} ms)")
 
@@ -56,29 +58,9 @@ def create_beep(filename, frequency=1000, duration=500):
     duration_ms = len(audio)  # Get duration in milliseconds
     print(f"Created beep sound -> {file_path} (Duration: {duration_ms} ms)")
 
-# Run the Edge-TTS speech synthesis
 async def main():
-    # Generate "blue" and "red" with adjusted speed
-    await create_audio("blue", "blue.mp3", speed=1.2)  # Adjust speed for correct duration
-    await create_audio("red", "red.mp3", speed=1.2)
-
-    # Generate a beep sound
-    create_beep("beep.mp3", frequency=1000, duration=500)
+    await create_audio("green", "green.wav", speed=1)
 
     print(f"All audio files saved in: {project_folder}")
 
-# Run the asyncio event loop
-# asyncio.run(main())
-
-from pydub import AudioSegment
-
-# Load the MP3
-sound = sound = AudioSegment.from_file(os.path.join(project_folder, "blue.mp3"))
-
-# Speed up by 1.25x
-faster = sound._spawn(sound.raw_data, overrides={
-    "frame_rate": int(sound.frame_rate * 1.25)
-}).set_frame_rate(sound.frame_rate)
-
-# Export it
-faster.export("blue_1.25x.mp3", format="mp3")
+asyncio.run(main())

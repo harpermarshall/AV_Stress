@@ -56,6 +56,8 @@ survey_with_delay <- survey_with_delay %>%
     No_Strat       = Q5,
   )
 
+write_csv(survey_with_delay, "All_Pilot_Combined.csv")
+
 ################################
 ### CLEAN STROOP RT DATA ######
 ################################
@@ -65,7 +67,7 @@ stroop_clean <- stroop_results_df %>%
   mutate(
     Correct = as.logical(Correct),
     RT = as.numeric(RT),
-    VisualOffset = as.factor('Visual Delay'),
+    VisualOffset = as.factor(`Visual Delay`),
     Type = factor(Type, levels = c("A", "V", "AVC", "AVI"))
   ) %>%
   filter(
@@ -79,7 +81,7 @@ offset_colors <- c("0" = "#e6a53250", "50" = "#F8766D", "100" = "#00BFC4", "150"
 ### RT BOXPLOT BY OFFSET & TYPE ##
 ##################################
 
-ggplot(stroop_clean, aes(x = Type, y = RT, color = Visual_Delay)) +
+ggplot(stroop_clean, aes(x = Type, y = RT, color = VisualOffset)) +
   geom_jitter(
     position = position_jitterdodge(jitter.width = 0.15, dodge.width = 0.6),
     alpha = 0.4
@@ -107,10 +109,10 @@ ggplot(stroop_clean, aes(x = Type, y = RT, color = Visual_Delay)) +
 #########################################
 
 median_offset_summary <- stroop_clean %>%
-  group_by(Type, VisualDelay) %>%
+  group_by(Type, VisualOffset) %>%
   summarise(median_rt = median(RT, na.rm = TRUE), .groups = "drop")
 
-ggplot(median_offset_summary, aes(x = Type, y = median_rt, fill = Visual_Delay)) +
+ggplot(median_offset_summary, aes(x = Type, y = median_rt, fill = VisualOffset)) +
   geom_col(position = position_dodge(width = 0.6), width = 0.5) +
   scale_fill_manual(values = offset_colors, name = "Visual Delay") +
   theme_minimal() +
