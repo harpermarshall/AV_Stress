@@ -22,7 +22,7 @@ def get_participant_info():
             continue
 
         participant_number = f"P{int(participant_number):03d}"
-        base_data_folder = "AV_SOA_Data"
+        base_data_folder = "SEA_Data"
         participant_folder = os.path.join(base_data_folder, participant_number)
 
         # 🚨 Check if folder exists
@@ -329,7 +329,7 @@ def run_practice(win, iti_range, total_trials, trial_types):
 # 🔷 Function to Run Trials
 def run_trials(win, participant_number, block_num, iti_range, stim_offset, total_trials):
 
-    base_data_folder = "AV_SOA_Data"
+    base_data_folder = "SEA_Data"
     participant_folder = os.path.join(base_data_folder, participant_number)
     os.makedirs(participant_folder, exist_ok=True)
     csv_filename = os.path.join(participant_folder, f"AV_Trials_Results_{participant_number}.csv")
@@ -419,8 +419,11 @@ def run_trials(win, participant_number, block_num, iti_range, stim_offset, total
             win.flip()
 
 # 🔷 Function for SOA Test
-def run_soa_test(win, participant_number, total_trials, soa_values_ms=[-500, -300, -50.01, -33.34, -16.67, 0, 16.67, 33.34, 50.01, 300, 500]):
-
+def run_soa_test(win, participant_number, iti_range=(1.9,2.1), soa_values_ms=[-200, -150, -100, -50, 0, 50, 100, 150, 200, 300, 400]):
+    """
+    Runs an SOA test block with 3 repetitions of each SOA x congruency x color combo,
+    fully randomized across all 120 trials. Records only essential trial data.
+    """
     fixation = visual.TextStim(win, text="+", color="white", height=40)
     response_keys = ["s", "a"]
     audio_files = {
@@ -444,38 +447,18 @@ def run_soa_test(win, participant_number, total_trials, soa_values_ms=[-500, -30
             writer.writerow(["Participant", "Block", "Trial", "Type", "Visual", "Audio", "SOA_ms", "Response"])
 
         trials = []
+        trial_types = ["AVC"]
         colors = ["red", "blue"]
+        reps = 2  # repeat every combination 2 times
 
-        # Separate sync vs async SOAs
-        if 0 in soa_values_ms:
-            sync_soa = 0
-            async_soas = [s for s in soa_values_ms if s != 0]
-        else:
-            sync_soa = None
-            async_soas = soa_values_ms
-
-        # Trial counts
-        n_total = total_trials
-        n_sync = n_total // 2 if sync_soa is not None else 0
-        n_async = n_total - n_sync
-        n_per_async = n_async // (len(async_soas) * len(colors))  # per color per async SOA
-        n_per_sync = n_sync // len(colors) if sync_soa is not None else 0  # per color for sync
-
-        # Generate sync trials
-        if sync_soa is not None:
-            for _ in range(n_per_sync):
-                for color in colors:
-                    trial = {"type": "AVC", "visual": color, "soa": 0}
-                    trial["audio"] = preloaded_sounds[color]
-                    trials.append(trial)
-
-        # Generate async trials
-        for soa in async_soas:
-            for _ in range(n_per_async):
-                for color in colors:
-                    trial = {"type": "AVC", "visual": color, "soa": soa}
-                    trial["audio"] = preloaded_sounds[color]
-                    trials.append(trial)
+        for _ in range(reps):
+            for soa in soa_values_ms:
+                for ttype in trial_types:
+                    for color in colors:
+                        trial = {"type": ttype, "visual": color, "soa": soa}
+                        if ttype == "AVC":
+                            trial["audio"] = preloaded_sounds[color]
+                        trials.append(trial)
 
         random.shuffle(trials)
 
@@ -564,7 +547,6 @@ def run_soa_test(win, participant_number, total_trials, soa_values_ms=[-500, -30
             # Show fixation during ITI
             fixation.draw()
             win.flip()
-            iti_range=(1.9,2.1)
             core.wait(random.uniform(*iti_range))
 
     fixation.autoDraw = False
@@ -696,7 +678,7 @@ block_questions = [
     "1. The AUDIO cues influenced my responses more than the visual cues.",
     "2. The VISUAL cues influenced my responses more than the audio cues.",
     "3. I felt like I had a single, specific strategy throughout the entirety of this section.",
-    "4. I had a strategy, but I feel like my strategy changed at least once during this section.",
+    "4. I had a strategy, but I feel like my strategy changed during this section.",
     "5. I do not feel like I had a specific strategy during this section.",
 ]
 
@@ -739,11 +721,11 @@ def run_full_experiment():
     run_soa_test(win, participant_number)
 
     # Randomize visual delays for blocks 1–5
-    stim_offsets = [-50.01, -33.34, -16.67, 0, 16.67, 33.34, 50.01]
+    stim_offsets = [0, 0.05, 0.1, 0.15, 0.2]
     random.shuffle(stim_offsets)
 
     # Establish number of total trials for run_trials in block 1-5
-    total_trials = 64
+    total_trials = 80
 
     # 🔶 Practice
     show_instructions(win, 
@@ -1086,12 +1068,12 @@ def run_trials_only():
 win = visual.Window(fullscr=True, color="black", units="pix")
 get_ready(win, "Get Ready!\nTask will begin in...")
 #run_practice(win, iti_range=(1.25, 1.5), total_trials=8, trial_types=["V", "A"])
-#run_trials(win, "P999", block_num=1, iti_range=(1, 1.25), total_trials=20, stim_offset=.5)
+run_trials(win, "P999", block_num=1, iti_range=(1, 1.25), total_trials=20, stim_offset=.5)
 #run_trials(win, "P999", block_num=2, iti_range=(1, 1.25), total_trials=5, stim_offset=0.05)
 #run_trials(win, "P999", block_num=3, iti_range=(1, 1.25), total_trials=5, stim_offset=0.1)
 #run_trials(win, "P999", block_num=4, iti_range=(1, 1.25), total_trials=5, stim_offset=0.15)
 #run_trials(win, "P999", block_num=5, iti_range=(1, 1.25), total_trials=5, stim_offset=0.20)
-run_soa_test(win, "P999", total_trials=64)
+#run_soa_test(win, "P999")
 #run_experiment_questionnaire(win, "P999", block_questions, block_num=1)
 win.close()
 core.quit()
