@@ -213,7 +213,7 @@ def run_single_trial(win, trial, stim_offset, response_keys):
 
     # Compute correctness
     if trial["type"] in ["V","A","AVC"]:
-        expected = "b" if (trial["visual"]=="blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "r"
+        expected = "f" if (trial["visual"]=="blue" or (trial["audio"] and "blue" in trial["audio"].fileName)) else "a"
         correct = (response == expected)
     else:
         correct = "NA"
@@ -222,7 +222,7 @@ def run_single_trial(win, trial, stim_offset, response_keys):
 
 # 🔷 Function to Run Practice
 def run_practice(win, total_trials, trial_types):
-    response_keys = ["r", "b"]  # Response keys
+    response_keys = ["a", "f"]  # Response keys
     fixation = visual.TextStim(win, text="+", color="white", height=40)
     iti_range=(1, 1.25)
 
@@ -296,7 +296,7 @@ def run_trials(win, participant_number, block_num, stim_offset, total_trials):
     os.makedirs(participant_folder, exist_ok=True)
     csv_filename = os.path.join(participant_folder, f"SCT_trials_{participant_number}.csv")
 
-    response_keys = ["r", "b"]
+    response_keys = ["a", "f"]
     fixation = visual.TextStim(win, text="+", color="white", height=40)
     iti_range=(1, 1.25)
 
@@ -310,7 +310,7 @@ def run_trials(win, participant_number, block_num, stim_offset, total_trials):
     with open(csv_filename, "a", newline="") as file:
         writer = csv.writer(file)
         if not file_exists:
-            writer.writerow(["participant_number", "block", "trial", "modality", "visual", "audio", "response", "rt_ms", "correct", "offset"])
+            writer.writerow(["participant_number", "block", "trial", "modality", "visual", "audio", "response", "rt", "correct", "offset"])
 
         trials = []
         proportions = {"A": 0.25, "V": 0.25, "AVC": 0.25, "AVI": 0.25}
@@ -365,8 +365,8 @@ def run_trials(win, participant_number, block_num, stim_offset, total_trials):
                 trial["type"],
                 trial["visual"] if trial["visual"] is not None else "NA",
                 os.path.basename(trial["audio"].fileName) if trial["audio"] else "NA",
-                response if response is not None else "NA",
-                int(rt * 1000) if rt is not None else "NA",
+                "R" if response == "a" else "B" if response == "f" else "NA",
+                rt if rt is not None else "NA",
                 correct if correct is not None else "NA",
                 stim_offset
             ])
@@ -385,7 +385,7 @@ def run_trials(win, participant_number, block_num, stim_offset, total_trials):
 def run_soa_test(win, participant_number, block_num, total_trials):
 
     fixation = visual.TextStim(win, text="+", color="white", height=40)
-    response_keys = ["s", "a"]
+    response_keys = ["s", "d"]
     audio_files = {
         "red": "/Users/harpermarshall/Desktop/Project 1/sounds/red.wav",
         "blue": "/Users/harpermarshall/Desktop/Project 1/sounds/blue.wav"
@@ -407,7 +407,7 @@ def run_soa_test(win, participant_number, block_num, total_trials):
     with open(soa_filename, "a", newline="") as file:
         writer = csv.writer(file)
         if not file_exists:
-            writer.writerow(["participant_number", "block", "trial", "modality", "visual", "audio", "soa_ms", "response"])
+            writer.writerow(["participant_number", "block", "trial", "modality", "visual", "audio", "soa_", "response"])
 
         trials = []
         colors = ["red", "blue"]
@@ -515,8 +515,8 @@ def run_soa_test(win, participant_number, block_num, total_trials):
                 trial["type"],
                 trial["visual"] if trial["visual"] is not None else "NA",
                 os.path.basename(trial["audio"].fileName) if trial["audio"] else "NA",
-                int(trial["soa"] * 1000),
-                key
+                trial["soa"],
+                "S" if key.lower() == "s" else "A"
             ])
 
             print(f"  ✅ SOA Trial {i+1} complete.")
@@ -840,21 +840,21 @@ def run_trials_only():
     core.quit()
 
 # 🔶 RUN EXPERIMENT
-run_full_experiment()
+#run_full_experiment()
 
 # 🔶 RUN EXPERIMENT
 #run_trials_only()
 
 # DUMMY MODE -----------------------------------------------------------------------------------------------------------------------------------------------------------
-#win = visual.Window(fullscr=True, color="black", units="pix")
-#get_ready(win, "Get Ready!\nTask will begin in...")
-#run_practice(win, total_trials=8, trial_types=["V", "A"])
-#run_trials(win, "P999", block_num=1, total_trials=20, stim_offset=.5)
+win = visual.Window(fullscr=True, color="black", units="pix")
+get_ready(win, "Get Ready!\nTask will begin in...")
+run_practice(win, total_trials=8, trial_types=["V", "A"])
+run_trials(win, "P999", block_num=1, total_trials=20, stim_offset=.5)
 #run_trials(win, "P999", block_num=2, total_trials=5, stim_offset=0.05)
 #run_trials(win, "P999", block_num=3, total_trials=5, stim_offset=0.1)
 #run_trials(win, "P999", block_num=4, total_trials=5, stim_offset=0.15)
 #run_trials(win, "P999", block_num=5, total_trials=5, stim_offset=0.20)
-#run_soa_test(win, "P998", block_num=1, total_trials=40)
+run_soa_test(win, "P999", block_num=1, total_trials=40)
 #run_experiment_questionnaire(win, "P999", block_questions, block_num=1)
-#win.close()
-#core.quit()
+win.close()
+core.quit()
