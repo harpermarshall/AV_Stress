@@ -1,3 +1,5 @@
+### SEMANTIC CONGRUENCY TASK ###
+
 from psychopy import visual, core, event, gui, sound
 from psychopy import prefs
 prefs.hardware['audioLib'] = ['PTB']
@@ -77,6 +79,7 @@ def show_instructions(win, text, duration):
             core.quit()
         elif 'space' in keys:
             break
+        core.wait(0.01)
 
     win.flip()
 
@@ -89,7 +92,13 @@ def get_ready(win, text):
     # Display the initial message for 4 seconds
     text_stim.draw()
     win.flip()
-    core.wait(2)  
+    wait_clock = core.Clock()
+    while wait_clock.getTime() < 2:
+        if event.getKeys(['escape']):
+            print("Escape key pressed during wait! Exiting...")
+            win.close()
+            core.quit()
+        core.wait(0.01)  
 
     # Countdown: 3, 2, 1
     for num in ["3", "2", "1"]:
@@ -393,7 +402,7 @@ def run_soa_test(win, participant_number, block_num, total_trials):
     preloaded_sounds = {color: sound.Sound(path) if os.path.exists(path) else None for color, path in audio_files.items()}
 
     # List of stimulus offset values to be pulled from in SOA task
-    stim_offset_soa=[-0.500, -0.300, -0.05001, -0.03334, -0.01667, 0, 0.01667, 0.03334, 0.05001, 0.300, 0.500]
+    stim_offset_soa=[-1.0, -0.800, -0.05001, -0.03334, -0.01667, 0, 0.01667, 0.03334, 0.05001, 0.800, 1.0]
 
     # Save to SOA-specific file
     if isinstance(participant_number, int):
@@ -459,7 +468,7 @@ def run_soa_test(win, participant_number, block_num, total_trials):
                 circle = visual.Circle(win, radius=75, fillColor=trial["visual"], lineColor=None)
 
             beep = trial["audio"]
-            soa_sec = trial["soa"] / 1000.0
+            soa_sec = trial["soa"]
 
             if trial["soa"] < 0:
                 # Show visual first
@@ -531,7 +540,7 @@ def run_soa_test(win, participant_number, block_num, total_trials):
     win.flip()
 
 # 🔷 Function to Run Experiment Questionnaire
-def run_experiment_questionnaire(win, participant_number, questions, block_num):
+def run_survey(win, participant_number, questions, block_num):
     responses = []  # Store all responses
 
     # Define font and scale layout
@@ -639,6 +648,8 @@ def run_experiment_questionnaire(win, participant_number, questions, block_num):
                     dots[selected_index].lineColor = "green"
                     warning_message.text = ""
 
+            core.wait(0.01)
+
     # Save responses to a per-participant survey CSV
     base_data_folder = "SCT_Data"
     participant_folder = os.path.join(base_data_folder, participant_number)
@@ -674,7 +685,7 @@ def run_full_experiment():
     participant_number = get_participant_info()
 
     # 🔶 Initialize PsychoPy Window
-    win = visual.Window(fullscr=True, color="black", units="pix")
+    win = visual.Window(fullscr=True, color="black", units="pix", checkTiming=False)
 
     # Trial Counts
     tt_SOA = 80
@@ -705,7 +716,7 @@ def run_full_experiment():
     show_instructions(win, 
         "The next screen will show a short countdown to help you get ready.\n\n"
         "After each response, there will be a brief pause before the next trial begins.", 
-        5)
+         5)
     get_ready(win, "Get Ready!\nSOA Task 1 will begin in...")
     run_soa_test(win, participant_number, block_num=1, total_trials=tt_SOA)
 
@@ -767,7 +778,7 @@ def run_full_experiment():
         show_instructions(win, 
             "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
             3)
-        run_experiment_questionnaire(win, participant_number, block_questions, block_num=block_num)
+        run_survey(win, participant_number, block_questions, block_num=block_num)
         
         if block_num < 7:
             show_instructions(win, 
@@ -791,7 +802,7 @@ def run_trials_only():
     participant_number = get_participant_info()
 
     # 🔶 Initialize PsychoPy Window
-    win = visual.Window(fullscr=True, color="black", units="pix")
+    win = visual.Window(fullscr=True, color="black", units="pix", checkTiming=False)
 
     # Trial Counts
     tt_main = 64
@@ -822,7 +833,7 @@ def run_trials_only():
         show_instructions(win, 
             "Press 1 if you strongly disagree,\n5 if you strongly agree,\nor 2-4 for responses in between.", 
             3)
-        run_experiment_questionnaire(win, participant_number, block_questions, block_num=block_num)
+        run_survey(win, participant_number, block_questions, block_num=block_num)
         
         if block_num < 7:
             show_instructions(win, 
@@ -840,21 +851,21 @@ def run_trials_only():
     core.quit()
 
 # 🔶 RUN EXPERIMENT
-#run_full_experiment()
+run_full_experiment()
 
 # 🔶 RUN EXPERIMENT
 #run_trials_only()
 
 # DUMMY MODE -----------------------------------------------------------------------------------------------------------------------------------------------------------
-win = visual.Window(fullscr=True, color="black", units="pix")
-get_ready(win, "Get Ready!\nTask will begin in...")
-run_practice(win, total_trials=8, trial_types=["V", "A"])
-run_trials(win, "P999", block_num=1, total_trials=20, stim_offset=.5)
+#win = visual.Window(fullscr=True, color="black", units="pix", checkTiming=False)
+#get_ready(win, "Get Ready!\nTask will begin in...")
+#run_practice(win, total_trials=8, trial_types=["V", "A"])
+#run_trials(win, "P999", block_num=1, total_trials=20, stim_offset=.5)
 #run_trials(win, "P999", block_num=2, total_trials=5, stim_offset=0.05)
 #run_trials(win, "P999", block_num=3, total_trials=5, stim_offset=0.1)
 #run_trials(win, "P999", block_num=4, total_trials=5, stim_offset=0.15)
 #run_trials(win, "P999", block_num=5, total_trials=5, stim_offset=0.20)
-run_soa_test(win, "P999", block_num=1, total_trials=40)
-#run_experiment_questionnaire(win, "P999", block_questions, block_num=1)
-win.close()
-core.quit()
+#run_soa_test(win, "P999", block_num=1, total_trials=40)
+#run_survey(win, "P999", block_questions, block_num=1)
+#win.close()
+#core.quit()
