@@ -1,8 +1,8 @@
 ### SEMANTIC CONGRUENCY TASK ###
 
-from psychopy import visual, core, event, gui, sound
 from psychopy import prefs
 prefs.hardware['audioLib'] = ['PTB']
+from psychopy import visual, core, event, gui, sound
 import random
 import csv
 import os
@@ -162,7 +162,7 @@ def run_single_trial(win, trial, stim_offset, response_keys):
                         print("Escape key pressed! Exiting...")
                         win.close()
                         core.quit()
-                core.wait(0.01)
+                core.wait(0.001)
             # 3) Play audio if needed
             if beep:
                 beep.play()
@@ -213,7 +213,7 @@ def run_single_trial(win, trial, stim_offset, response_keys):
         if auto_response and rt_clock.getTime() > 0.5:
             response, rt = "NA", 0.5
             break
-        core.wait(0.01)
+        core.wait(0.001)
     win.flip()  # clear all stimuli after response
 
     # Fix impropperly recorded RTs

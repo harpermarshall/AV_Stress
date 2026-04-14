@@ -76,7 +76,7 @@ trials_with_survey_df %>%
   mutate(
     Total = A + V + AVC + AVI
   ) %>%
-  print()
+  print(n=Inf)
 
 # trouble shoot by participant (e.g. "P016") if needed to figure out what data is missing/where
 #trials_with_survey_df %>%
@@ -138,7 +138,7 @@ clean_df <- trials_with_survey_df %>%
 
 # 11. OPTIONAL: DROP ALL WRONG TRIALS
 # If you want to remove trials where correct == FALSE, uncomment the next line
-#clean_df <- clean_df %>% filter(is.na(correct) | correct == TRUE)
+clean_df <- clean_df %>% filter(is.na(correct) | correct == TRUE)
 
 # 12. SEE HOW MANY TRIALS GOT REMOVED, BY CONDITION
 removed_trials <- bind_rows(
@@ -168,7 +168,7 @@ removed_trials <- bind_rows(
   )
 
 # Print the removal summary
-print(removed_trials)
+print(removed_trials, n=Inf)
 
 # 13. QUICK COUNTS BEFORE AFTER CLEAN
 # Count how many trials are marked wrong, too fast (<250 ms), or too slow (>2000 ms) after cleaning
@@ -180,4 +180,5 @@ cat("• Too slow (>2000 ms):", sum(clean_df$rt > 2, na.rm = TRUE), "\n")
 
 # 14. SAVE YOUR CLEAN DATA
 # Write the cleaned table out to a new CSV file for future use
-#write_csv(clean_df, "All_Trials_With_Survey_17All.csv")
+#write_csv(clean_df, "All_Trials_With_Survey_21TrueFAST.csv")
+

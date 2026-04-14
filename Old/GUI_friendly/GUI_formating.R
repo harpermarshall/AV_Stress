@@ -1,20 +1,28 @@
 library(tidyverse)
 library(readr)
 
-library(tidyverse)
+# SET WORKING DIRECTORY
+setwd("/Users/harpermarshall/Desktop/Project 1/SCT_Data/")
 
-# Set working directory
-setwd("/Users/harpermarshall/Desktop/Project 1/AV_Stress_Data/")
+library(readr)
+library(dplyr)
+library(stringr)
 
-# Load the CSV and convert format
-gui_ready_df <- read_csv("All_Stroop_Trials_With_Survey_NoOffsets.csv") %>%
-  filter(Type %in% c("A", "V", "AVI")) %>%
+excluded_participants <- c()
+
+gui_ready_df <- read_csv("All_Trials_With_Survey_21True.csv") %>%
+  filter(
+    modality %in% c("A", "V", "AVC"),
+    offset_corrected == 0,
+    rt_corrected <= 1000,           # drop trials over 800 ms
+    !participant_number %in% excluded_participants
+  ) %>%
   mutate(
-    participant_number = as.integer(str_remove(Participant, "^P0*")),
-    modality = recode(Type, A = 1, V = 2, AVI = 3),
-    reaction_time = RT_corrected
+    participant_number = as.integer(str_remove(participant_number, "^P0*")),
+    modality           = recode(modality, A = 1, V = 2, AVC = 3),
+    reaction_time      = rt_corrected
   ) %>%
   select(participant_number, modality, reaction_time)
 
 # Save new GUI-ready file
-write_csv(gui_ready_df, "GUI_Formatted_Data(AVI).csv")
+write_csv(gui_ready_df, "GUI_Formatted_Data(20AVC0TEST).csv")

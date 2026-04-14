@@ -2,39 +2,34 @@
 ###      LOAD LIBRARIES & SETUP      ###
 ########################################
 
-# tidyverse: a collection of packages for reading, cleaning, and plotting data
-# dplyr: data-manipulation verbs (already part of tidyverse but loaded separately)
-# stringr: handy string (text) functions
-# rstatix: simple functions for statistics (not used below but often handy)
-# ggsignif: add significance stars or lines on ggplots
-# patchwork: easily combine multiple ggplots into one layout
-library(tidyverse)
-library(dplyr)
-library(stringr)
-library(rstatix)
-library(ggsignif)
-library(patchwork)
-
 # Tell R which folder has all your data files
 setwd("/Users/harpermarshall/Desktop/Project 1/SCT_Data/")
 
 # Read in the cleaned CSV of all trials + survey answers
 # and make sure "modality" is treated as a category with levels A, V, AVC, AVI
-total_df <- read_csv("All_Trials_With_Survey_17True.csv") %>%
+total_df <- read_csv("All_Trials_With_Survey_21TrueFAST.csv") %>%
   mutate(
     modality = factor(modality, levels = c("A","V","AVC","AVI"))
   )
 
 # Define a custom set of colors for each offset value (in milliseconds)
 offset_colors <- c(
-  "-50.01" = "#E682B2",
-  "-33.34" = "#C23B7A",
-  "-16.67" = "#8B1E3F",
-  "0"      = "#4A4A4A",
-  "16.67"  = "#008080",
-  "33.34"  = "#42BFBF",
-  "50.01"  = "#8ADBD2"
+  "-50.01" = "#FEC495",
+  "-33.34" = "#F99A3F",
+  "-16.67" = "#C1292E",
+  "0"      = "#60110C",
+  "16.67"  = "#006A79",
+  "33.34"  = "#BCE1E5",
+  "50.01"  = "#DEEDEE"
 )
+
+#offset_colors <- c(
+  #"-33.34" = "#C23B7A",
+  #"-16.67" = "#8B1E3F",
+  #"0"      = "#4A4A4A",
+  #"16.67"  = "#008080",
+  #"33.34"  = "#42BFBF",
+  #"50.01"  = "#8ADBD2"
 
 ########################################
 ###        Raw RT by Modality        ###
@@ -116,25 +111,47 @@ median_summary <- total_df %>%
   )
 
 # Bar plot of those medians, colored by offset
+# Bar plot of those medians, colored by offset
 ggplot(median_summary, aes(x = modality, y = median_rt, fill = factor(offset_corrected))) +
   geom_col(position = position_dodge(0.6), width = 0.5) +
   scale_fill_manual(values = offset_colors) +
   labs(
-    title = "Median Response Time by Trial Modality and Stimulus Offset",
+    title = "Median Response Time by\nTrial Modality and Stimulus Onset",
     x = "Trial Modality",
     y = "Median Response Time (ms)",
-    fill = "Offset (ms)"
+    fill = "Onset (ms)"
   ) +
   coord_cartesian(ylim = c(300, 700)) +  # zoom in on typical RT range
-  theme_minimal(base_size = 14, base_family = "Arial") +
-  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(size = 12))
+  theme_minimal(base_size = 26, base_family = "Arial") +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.grid.major = element_line(color = "#CCCCCC"),
+    panel.grid.minor = element_line(color = "#E0E0E0"),
+    axis.text = element_text(color = "#333333"),
+    axis.title = element_text(color = "#333333"),
+    plot.title = element_text(
+      hjust = 0.5, size = 36, face = "bold", color = "#333333"
+    ),
+    legend.background = element_rect(fill = "white", color = NA),
+    legend.key = element_rect(fill = "white", color = NA),
+    legend.text = element_text(color = "#333333"),
+    legend.title = element_text(color = "#333333"),
+    axis.text.x = element_text(size = 26),
+    axis.title.x = element_text(size = 30),
+    axis.title.y = element_text(size = 30)
+  )
 
 ########################################
 ###    Median RT by Participant      ###
 ########################################
 
 # Now calculate median RT per person × modality × offset
+# Optional: list participants to exclude (does NOT modify total_df)
+exclude_participants <- c()  # or c() to include everyone
+
 median_summary <- total_df %>%
+  filter(!participant_number %in% exclude_participants) %>%
   group_by(participant_number, modality, offset_corrected) %>%
   summarise(
     median_rt = median(rt_corrected, na.rm = TRUE),
@@ -164,8 +181,14 @@ ggplot(median_summary, aes(x = modality, y = median_rt, fill = factor(offset_cor
 ########################################
 
 # Focus only on the AVC trials
+# Optional exclusion list (does NOT modify total_df)
+exclude_participants <- c("P014")  # or c()
+
 total_df %>%
-  filter(modality == "AVC") %>%  
+  filter(
+    modality == "AVC",
+    !participant_number %in% exclude_participants
+  ) %>%  
   group_by(participant_number, offset_corrected) %>%
   summarise(
     median_rt = median(rt_corrected, na.rm = TRUE),
@@ -496,29 +519,57 @@ accuracy_summary <- clean_df %>%
   summarise(accuracy = mean(correct), .groups = "drop") %>%
   mutate(offset_corrected = as.numeric(offset_corrected))
 
-# Plot accuracy curves
 ggplot(accuracy_summary, aes(x = offset_corrected, y = accuracy, color = modality, group = modality)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
-  scale_x_continuous(name = "Visual Offset (ms)", breaks = sort(unique(accuracy_summary$offset_corrected))) +
-  scale_y_continuous(name = "Proportion Correct", limits = c(0.95,1)) +
+  scale_color_manual(values = c("A" = "#4F81BD", "AVC" = "darkgreen", "V" = "#C0504D")) +
+  scale_x_continuous(name = "Visual Offset (ms)",
+                     breaks = sort(unique(accuracy_summary$offset_corrected))) +
+  scale_y_continuous(name = "Proportion Correct", limits = c(0.95, 1)) +
   theme_minimal(base_size = 14) +
   labs(title = "Accuracy by Modality and Visual Offset")
 
-########################################
-### Compare Accuracy by Strategy     ###
-########################################
-
-# Average accuracy for each person based on if they reported using one strategy
-strategy_acc <- clean_df %>%
-  filter(!is.na(correct)) %>%
-  group_by(participant_number, one_strat) %>%
-  summarise(acc = mean(correct), .groups = "drop")
-
-# Boxplot + jitter showing distribution of accuracy by one_strat rating
-ggplot(strategy_acc, aes(x = factor(one_strat), y = acc)) +
-  geom_boxplot() +
-  geom_jitter(width = 0.1, alpha = 0.5) +
-  labs(x = "Reported Using One Strategy", y = "Accuracy") +
+# BAR PLOT VERSION
+ggplot(accuracy_summary, aes(x = factor(offset_corrected), 
+                             y = accuracy, 
+                             fill = modality)) +
+  geom_bar(stat = "identity", 
+           position = position_dodge(width = 0.8), 
+           width = 0.7) +
+  scale_fill_manual(values = c("A" = "#4F81BD",      # soft blue
+                               "AVC" = "darkgreen",  # AVC stays green
+                               "V" = "#C0504D")) +   # soft red
+  scale_y_continuous(name = "Proportion Correct") + 
+  coord_cartesian(ylim = c(0.90, 1)) +   # <-- ZOOMS in without dropping bars
+  labs(x = "Visual Offset (ms)", 
+       title = "Accuracy by Modality and Visual Offset") +
   theme_minimal(base_size = 14)
+
+# ACURACY CALC #
+# 1️⃣ Average accuracy for EACH participant × modality × offset
+accuracy_by_participant <- clean_df %>%
+  filter(!is.na(correct),
+         rt_corrected >= 250) %>%
+  group_by(participant_number, modality, offset_corrected) %>%
+  summarise(mean_accuracy = mean(correct), .groups = "drop")
+
+anova_results <- accuracy_by_participant %>%
+  anova_test(
+    dv = mean_accuracy,
+    wid = participant_number,
+    within = c(modality, offset_corrected)
+  )
+
+anova_results
+
+# 2️⃣ Paired t-tests: compare AVC to A and V at each offset
+pairwise_results <- accuracy_by_participant %>%
+  group_by(offset_corrected) %>%
+  pairwise_t_test(
+    mean_accuracy ~ modality,
+    paired = TRUE,
+    p.adjust.method = "bonferroni"
+  )
+
+print(pairwise_results, n = Inf)
 
